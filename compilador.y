@@ -8,76 +8,82 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compilador.h"
 
-int num_vars;
+#include "compilador.h"
+#include "stack.h"
+
+int num_vars, nivel_lexico = -1, offset;
+char str_aux[100];
 
 %}
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
+%token INTEIRO
 
 %%
 
-programa    :{
-             geraCodigo (NULL, "INPP");
-             }
-             PROGRAM IDENT
-             ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-             bloco PONTO {
-             geraCodigo (NULL, "PARA");
-             }
+programa    :   {geraCodigo (NULL, "INPP");}
+                PROGRAM IDENT
+                ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
+                bloco PONTO
+                {
+                    geraCodigo (NULL, "PARA");
+                    destroy(&Tabela_Simbolos, entry_destroy);
+                }
 ;
 
-bloco       :
-              parte_declara_vars
-              {
-              }
-
+bloco       : {nivel_lexico += 1;}
+              var
               comando_composto
-              ;
-
-
-
-
-parte_declara_vars:  var
+              {nivel_lexico -= 1;}
 ;
 
 
-var         : { } VAR declara_vars
-            |
+var         : { } VAR declara_vars;
+
+declara_vars: declara_vars declara_var | declara_var;
+
+declara_var :   { num_vars = 0; offset = 0;}
+                lista_id_var DOIS_PONTOS
+                tipo
+                {
+                    sprintf(str_aux, "AMEM %i", num_vars);
+                    geraCodigo (NULL, str_aux);
+                    // ir ate a tabela de simbolos e atualizar o tipo delas
+                }
+                PONTO_E_VIRGULA
 ;
 
-declara_vars: declara_vars declara_var
-            | declara_var
+tipo        : INTEIRO
 ;
 
-declara_var : { }
-              lista_id_var DOIS_PONTOS
-              tipo
-              { /* AMEM */
-              }
-              PONTO_E_VIRGULA
-;
+lista_id_var:   lista_id_var VIRGULA IDENT
+                { 
+                    num_vars += 1;
 
-tipo        : IDENT
-;
+                    push_symbol(nivel_lexico, offset);
 
-lista_id_var: lista_id_var VIRGULA IDENT
-              { /* insere ï¿½ltima vars na tabela de sï¿½mbolos */ }
-            | IDENT { /* insere vars na tabela de sï¿½mbolos */}
+                    offset += 1;
+                }
+                | IDENT
+                {
+                    num_vars += 1;
+
+                    push_symbol(nivel_lexico, offset);
+
+                    offset += 1;
+                }
 ;
 
 lista_idents: lista_idents VIRGULA IDENT
             | IDENT
 ;
 
-
 comando_composto: T_BEGIN comandos T_END
 
-comandos:
-;
+comandos: ;
 
 
 %%
@@ -99,7 +105,7 @@ int main (int argc, char** argv) {
 
 
 /* -------------------------------------------------------------------
- *  Inicia a Tabela de Sï¿½mbolos
+ *  Inicia a Tabela de Símbolos
  * ------------------------------------------------------------------- */
 
    yyin=fp;

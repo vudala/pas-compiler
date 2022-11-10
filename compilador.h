@@ -18,6 +18,7 @@ typedef enum simbolos {
   simb_identificador, simb_numero,
   simb_ponto, simb_virgula, simb_ponto_e_virgula, simb_dois_pontos,
   simb_atribuicao, simb_abre_parenteses, simb_fecha_parenteses,
+  simb_inteiro
 } simbolos;
 
 
@@ -32,6 +33,12 @@ extern int nivel_lexico;
 extern int desloc;
 extern int nl;
 
+typedef struct entry_t {
+    char * identificador;
+    int nl, offset;
+    char tipo[50];
+} Entry;
+
 
 /* -------------------------------------------------------------------
  * prototipos globais
@@ -40,3 +47,7 @@ extern int nl;
 void geraCodigo (char*, char*);
 int yylex();
 void yyerror(const char *s);
+
+void push_symbol(int nl, int offset);
+
+void entry_destroy(void * ptr);

@@ -21,10 +21,8 @@
 #include "compilador.h"
 #include "compilador.tab.h"
 
-//#define IMPRIME(STR) {};
-#define IMPRIME(STR) printf("%s    # %s \n", STR, token);
-
-int nl = 1;
+#define IMPRIME(STR) printf("", STR, token);
+// #define IMPRIME(STR) printf("%s    # %s \n", STR, token);
 
 %}
 
@@ -40,7 +38,7 @@ comentario "(*".*"*)"
 
 %%
 
-{pulo_linha} {nl++;}
+{pulo_linha}
 
 {descarte}
 
@@ -112,6 +110,12 @@ end { simbolo = simb_end;
           IMPRIME(" fecha_parenteses ");
           return FECHA_PARENTESES;
  }
+
+integer { simbolo = simb_inteiro;
+          strncpy (token, yytext, TAM_TOKEN);
+          IMPRIME(" inteiro  ");
+          return INTEIRO;
+        }
 
 {ident} { simbolo = simb_identificador;
           strncpy (token, yytext, TAM_TOKEN);
