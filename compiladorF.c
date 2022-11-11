@@ -70,3 +70,15 @@ void entry_destroy(void * ptr)
     free(ent->identificador);
     free(ent);
 }
+
+// void update_types(char * type)
+// {
+//     Stack * el = Tabela_Simbolos;
+//     Entry * en = (Entry *) el->v;
+//     while(en != NULL && en->nl == nivel_lexico) {
+//         en->tipo = type;
+//         strcpy(en->)
+//         el = el->prev;
+//         en = (Entry *) el->v;
+//     }
+// }

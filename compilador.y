@@ -14,6 +14,7 @@
 
 int num_vars, nivel_lexico = -1, offset;
 char str_aux[100];
+extern Stack * Tabela_Simbolos;
 
 %}
 
@@ -61,18 +62,16 @@ tipo        : INTEIRO
 
 lista_id_var:   lista_id_var VIRGULA IDENT
                 { 
-                    num_vars += 1;
-
                     push_symbol(nivel_lexico, offset);
-
+                    
+                    num_vars += 1;
                     offset += 1;
                 }
                 | IDENT
                 {
-                    num_vars += 1;
-
                     push_symbol(nivel_lexico, offset);
 
+                    num_vars += 1;
                     offset += 1;
                 }
 ;
