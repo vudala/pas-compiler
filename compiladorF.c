@@ -24,7 +24,7 @@
  *  variáveis globais
  * ------------------------------------------------------------------- */
 
-simbolos simbolo, relacao;
+Simbolos simbolo, relacao;
 char token[TAM_TOKEN];
 Stack * Tabela_Simbolos;
 
@@ -42,7 +42,7 @@ void geraCodigo (char* rot, char* comando)
     }
 }
 
-int imprimeErro ( char* erro )
+int trigger_error ( char* erro )
 {
     fprintf (stderr, "Erro na linha %d - %s\n", nivel_lexico, erro);
     exit(-1);
@@ -57,6 +57,7 @@ void push_symbol(int nl, int offset)
     strcpy(ne->identificador, token);
     ne->nl = nl;
     ne->offset = offset;
+    ne->tipo = tipo_indefinido;
 
     printf("%s %i %i\n", ne->identificador, ne->nl, ne->offset);
 
@@ -71,14 +72,26 @@ void entry_destroy(void * ptr)
     free(ent);
 }
 
-// void update_types(char * type)
-// {
-//     Stack * el = Tabela_Simbolos;
-//     Entry * en = (Entry *) el->v;
-//     while(en != NULL && en->nl == nivel_lexico) {
-//         en->tipo = type;
-//         strcpy(en->)
-//         el = el->prev;
-//         en = (Entry *) el->v;
-//     }
-// }
+int get_type_enum(char * type)
+{
+    if (!strcmp(type, "integer")) return tipo_inteiro;
+    if (!strcmp(type, "bool")) return tipo_booleano;
+
+    trigger_error("tipo inexistente\n");
+
+    return tipo_indefinido;
+}
+
+void update_types(char * type)
+{
+    Stack * el = Tabela_Simbolos;
+    Entry * en = (Entry *) el->v;
+ 
+    while(el && en && !en->tipo && en->nl == nivel_lexico) {
+        en->tipo = get_type_enum(type);
+
+        el = el->prev;
+        if (el)
+            en = (Entry *) el->v;
+    }
+}

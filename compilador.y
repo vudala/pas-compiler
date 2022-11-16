@@ -21,7 +21,7 @@ extern Stack * Tabela_Simbolos;
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
-%token INTEIRO
+%token INTEIRO BOOLEANO
 
 %%
 
@@ -41,23 +41,35 @@ bloco       : {nivel_lexico += 1;}
               {nivel_lexico -= 1;}
 ;
 
-
-var         : { } VAR declara_vars;
+///////////// DECLARACAO DE VARIAVEIS
+var         :   { num_vars = 0; offset = 0;}
+                VAR declara_vars
+                {
+                    sprintf(str_aux, "AMEM %i", num_vars);
+                    
+                    geraCodigo (NULL, str_aux);
+                }
+;
 
 declara_vars: declara_vars declara_var | declara_var;
 
-declara_var :   { num_vars = 0; offset = 0;}
+declara_var :   {}
                 lista_id_var DOIS_PONTOS
                 tipo
                 {
-                    sprintf(str_aux, "AMEM %i", num_vars);
-                    geraCodigo (NULL, str_aux);
+                    
                     // ir ate a tabela de simbolos e atualizar o tipo delas
+                    update_types(token);
                 }
                 PONTO_E_VIRGULA
 ;
+/////////////
 
-tipo        : INTEIRO
+
+
+//
+
+tipo        : INTEIRO | BOOLEANO
 ;
 
 lista_id_var:   lista_id_var VIRGULA IDENT

@@ -117,6 +117,12 @@ integer { simbolo = simb_inteiro;
           return INTEIRO;
         }
 
+bool  { simbolo = simb_boolean;
+        strncpy (token, yytext, TAM_TOKEN);
+        IMPRIME(" booleano  ");
+        return BOOLEANO;
+      }
+
 {ident} { simbolo = simb_identificador;
           strncpy (token, yytext, TAM_TOKEN);
           IMPRIME(" ident  ");
