@@ -29,6 +29,7 @@ char token[TAM_TOKEN];
 Stack * Tabela_Simbolos;
 
 FILE* fp=NULL;
+
 void geraCodigo (char* rot, char* comando)
 {
     if (fp == NULL)
@@ -42,6 +43,7 @@ void geraCodigo (char* rot, char* comando)
     }
 }
 
+
 int trigger_error ( char* erro )
 {
     fprintf (stderr, "Erro na linha %d - %s\n", nivel_lexico, erro);
@@ -53,13 +55,13 @@ void push_symbol(int nl, int offset)
 {
     Entry * ne = malloc(sizeof(Entry));
 
-    ne->identificador = malloc(strlen(token));
-    strcpy(ne->identificador, token);
-    ne->nl = nl;
-    ne->offset = offset;
-    ne->tipo = tipo_indefinido;
+    ne->identifier = malloc(strlen(token));
+    strcpy(ne->identifier, token);
+    ne->address.nl = nl;
+    ne->address.offset = offset;
+    ne->type = tipo_indefinido;
 
-    printf("%s %i %i\n", ne->identificador, ne->nl, ne->offset);
+    printf("%s %i %i\n", ne->identifier, ne->address.nl, ne->address.offset);
 
     push(&Tabela_Simbolos, ne);
 }
@@ -68,9 +70,10 @@ void push_symbol(int nl, int offset)
 void entry_destroy(void * ptr)
 {
     Entry * ent = (Entry *) ptr;
-    free(ent->identificador);
+    free(ent->identifier);
     free(ent);
 }
+
 
 int get_type_enum(char * type)
 {
@@ -82,13 +85,32 @@ int get_type_enum(char * type)
     return tipo_indefinido;
 }
 
+
+Entry * get_entry(char * identifier)
+{
+    Stack * el = Tabela_Simbolos;
+    Entry * en = (Entry*) el->v;
+
+    while (el && en) {
+        if (strcmp(identifier, en->identifier) == 0)
+            return en;
+
+        el = el->prev;
+        en = (Entry*) el->v;
+    }
+
+    return NULL;
+}
+
+
 void update_types(char * type)
 {
     Stack * el = Tabela_Simbolos;
     Entry * en = (Entry *) el->v;
  
-    while(el && en && !en->tipo && en->nl == nivel_lexico) {
-        en->tipo = get_type_enum(type);
+    // enquanto houver elementos validos e seus tipos forem indefinidos e sob o mesmo nivel lexico
+    while(el && en && !en->type && en->address.nl == nivel_lexico) {
+        en->type = get_type_enum(type);
 
         el = el->prev;
         if (el)

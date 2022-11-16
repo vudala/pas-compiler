@@ -29,16 +29,19 @@ extern Simbolos simbolo, relacao;
 extern char token[TAM_TOKEN];
 extern int nivel_lexico;
 
-typedef struct entry_t {
-    char * identificador;
+typedef struct mepa_addr {
     int nl, offset;
+} MEPA_Address;
+
+typedef struct entry_t {
+    char * identifier;
+    MEPA_Address address;
 	enum {
 		tipo_indefinido = 0,
 		tipo_inteiro,
 		tipo_booleano
-	} tipo;
+	} type;
 } Entry;
-
 
 /* -------------------------------------------------------------------
  * prototipos globais

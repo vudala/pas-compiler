@@ -88,13 +88,39 @@ lista_id_var:   lista_id_var VIRGULA IDENT
                 }
 ;
 
-lista_idents: lista_idents VIRGULA IDENT
-            | IDENT
+lista_idents:
+    lista_idents VIRGULA IDENT |
+    IDENT
 ;
 
 comando_composto: T_BEGIN comandos T_END
 
-comandos: ;
+comandos: atribuicao;
+
+
+atribuicao: variavel ATRIBUICAO expressao
+;
+
+variavel:
+;
+
+expressao: 
+    expressao relacao expressao_simples |
+    expressao_simples;
+;
+
+relacao: 
+;
+
+expressao_simples:
+    // expressao_simples [+ - or] termo |
+    // [+ - or] termo
+;
+
+termo:
+;
+
+
 
 
 %%

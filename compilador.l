@@ -32,7 +32,7 @@ descarte [\t ]+
 
 ident [a-zA-Z][a-zA-Z0-9]*
 
-numero [0-9]+
+digito [0-9]
 
 comentario "(*".*"*)"
 
