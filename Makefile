@@ -25,4 +25,4 @@ compilador.o : compiladorF.c
 	gcc -g -c compiladorF.c -o compilador.o
 
 clean :
-	rm -f compilador.tab.* lex.yy.c compilador.o stack.o compilador
+	rm -f compilador.tab.* lex.yy.c compilador.o stack.o MEPA compilador.output compilador

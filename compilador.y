@@ -74,14 +74,14 @@ tipo        : INTEIRO | BOOLEANO
 
 lista_id_var:   lista_id_var VIRGULA IDENT
                 { 
-                    push_symbol(nivel_lexico, offset);
+                    push_symbol(cate_vs);
                     
                     num_vars += 1;
                     offset += 1;
                 }
                 | IDENT
                 {
-                    push_symbol(nivel_lexico, offset);
+                    push_symbol(cate_vs);
 
                     num_vars += 1;
                     offset += 1;
@@ -95,7 +95,7 @@ lista_idents:
 
 comando_composto: T_BEGIN comandos T_END
 
-comandos: atribuicao;
+comandos: ;
 
 
 atribuicao: variavel ATRIBUICAO expressao

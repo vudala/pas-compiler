@@ -21,6 +21,13 @@ typedef enum simbolos {
     simb_inteiro, simb_boolean
 } Simbolos; 
 
+
+typedef enum tipo {
+    tipo_indefinido = 0,
+    tipo_inteiro,
+    tipo_booleano
+} Tipo;
+
 /* -------------------------------------------------------------------
  * variáveis globais
  * ------------------------------------------------------------------- */
@@ -28,19 +35,33 @@ typedef enum simbolos {
 extern Simbolos simbolo, relacao;
 extern char token[TAM_TOKEN];
 extern int nivel_lexico;
+extern int offset;
 
 typedef struct mepa_addr {
     int nl, offset;
 } MEPA_Address;
 
-typedef struct entry_t {
-    char * identifier;
+typedef struct variavel_simples {
     MEPA_Address address;
-	enum {
-		tipo_indefinido = 0,
-		tipo_inteiro,
-		tipo_booleano
-	} type;
+	Tipo type;
+} VariavelSimples;
+
+
+typedef struct parametro_formal {
+    MEPA_Address address;
+	Tipo type;
+    int ref;                // 0 -> valor, != 0 -> referencia
+} ParametroFormal;
+
+
+typedef struct entry_t {
+    char * identifier;  // identificador
+    void * element;     // vs, proc, pf
+    enum {
+        cate_vs = 0,    // variavel simples
+        cate_proc,      // procedimento
+        cate_pf         // parametro formal
+    } category;
 } Entry;
 
 /* -------------------------------------------------------------------
@@ -51,7 +72,7 @@ void geraCodigo (char*, char*);
 int yylex();
 void yyerror(const char *s);
 
-void push_symbol(int nl, int offset);
+void push_symbol(int category);
 
 void entry_destroy(void * ptr);
 

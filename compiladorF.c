@@ -50,18 +50,40 @@ int trigger_error ( char* erro )
     exit(-1);
 }
 
+void must_alloc(const void * ptr, const char * msg)
+{
+    if (!ptr) {
+        perror(msg);
+        exit(-1);
+    }
+}
 
-void push_symbol(int nl, int offset)
+
+void push_symbol(int category)
 {
     Entry * ne = malloc(sizeof(Entry));
 
     ne->identifier = malloc(strlen(token));
     strcpy(ne->identifier, token);
-    ne->address.nl = nl;
-    ne->address.offset = offset;
-    ne->type = tipo_indefinido;
 
-    printf("%s %i %i\n", ne->identifier, ne->address.nl, ne->address.offset);
+    ne->category = category;
+
+    if (category == cate_vs) {
+        VariavelSimples * vs = malloc(sizeof(VariavelSimples));
+        must_alloc(vs, "malloc");
+
+        vs->type = tipo_indefinido;
+        vs->address.nl = nivel_lexico;
+        vs->address.offset = offset;
+
+        ne->element = (void*) vs;
+    }
+    else if (category == cate_proc) {
+        void;
+    }
+    else if (category == cate_pf) {
+        void;
+    }
 
     push(&Tabela_Simbolos, ne);
 }
@@ -107,10 +129,15 @@ void update_types(char * type)
 {
     Stack * el = Tabela_Simbolos;
     Entry * en = (Entry *) el->v;
+    VariavelSimples * vs = NULL;
  
-    // enquanto houver elementos validos e seus tipos forem indefinidos e sob o mesmo nivel lexico
-    while(el && en && !en->type && en->address.nl == nivel_lexico) {
-        en->type = get_type_enum(type);
+    while(el && en && en->category == cate_vs) {
+        vs = (VariavelSimples*) en->element;
+
+        if (nivel_lexico != vs->address.nl)
+            return;
+
+        vs->type = get_type_enum(type);
 
         el = el->prev;
         if (el)
