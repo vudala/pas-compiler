@@ -12,7 +12,7 @@
 #include "compilador.h"
 #include "stack.h"
 
-int num_vars, nivel_lexico = -1, offset;
+int num_vars_declaradas, nivel_lexico = -1, offset;
 char str_aux[100];
 extern Stack * Tabela_Simbolos;
 
@@ -21,9 +21,8 @@ extern Stack * Tabela_Simbolos;
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
-%token INTEIRO BOOLEANO
-%token MULTIPLICACAO DIVISAO 
-%token AND NEGACAO
+%token INTEIRO Numero
+%token MAIS MENOS MULTIPLICACAO DIVISAO 
 
 %%
 
@@ -37,28 +36,35 @@ programa    :   {geraCodigo (NULL, "INPP");}
                 }
 ;
 
+
 bloco       :   {nivel_lexico += 1;}
                 var
                 comando_composto
                 {
                     nivel_lexico -= 1;
-                    sprintf(str_aux, "DMEM %i", num_vars);
+                    sprintf(str_aux, "DMEM %i", num_vars_declaradas);
                     
                     geraCodigo (NULL, str_aux);
                 }
 ;
+
 
 ///////////// DECLARACAO DE VARIAVEIS
-var         :   { num_vars = 0; offset = 0;}
+var         :   { num_vars_declaradas = 0; offset = 0;}
                 VAR declara_vars
                 {
-                    sprintf(str_aux, "AMEM %i", num_vars);
+                    sprintf(str_aux, "AMEM %i", num_vars_declaradas);
                     
                     geraCodigo (NULL, str_aux);
                 }
 ;
 
-declara_vars: declara_vars declara_var | declara_var;
+
+declara_vars:
+    declara_vars declara_var |
+    declara_var
+;
+
 
 declara_var :   {}
                 lista_id_var DOIS_PONTOS
@@ -72,23 +78,25 @@ declara_var :   {}
 /////////////
 
 
-tipo        : INTEIRO | BOOLEANO
+tipo:
+    INTEIRO
 ;
 
-lista_id_var:   lista_id_var VIRGULA IDENT
-                { 
-                    push_symbol(cate_vs);
-                    
-                    num_vars += 1;
-                    offset += 1;
-                }
-                | IDENT
-                {
-                    push_symbol(cate_vs);
+lista_id_var:   
+    lista_id_var VIRGULA IDENT
+    { 
+        push_symbol(cate_vs);
+        
+        num_vars_declaradas += 1;
+        offset += 1;
+    } |
+    IDENT
+    {
+        push_symbol(cate_vs);
 
-                    num_vars += 1;
-                    offset += 1;
-                }
+        num_vars_declaradas += 1;
+        offset += 1;
+    }
 ;
 
 lista_idents:
@@ -96,12 +104,14 @@ lista_idents:
     IDENT
 ;
 
-comando_composto: T_BEGIN comandos T_END
+comando_composto: 
+    T_BEGIN comandos T_END
+;
 
 comandos: ;
 
-
-atribuicao: variavel ATRIBUICAO expressao
+atribuicao:
+    variavel ATRIBUICAO expressao
 ;
 
 variavel:
@@ -116,32 +126,45 @@ relacao:
 ;
 
 expressao_simples:
-    expressao_simples [+ - or] termo |
-    [+ - or] termo
-;
-
-termo:
-    termo MULTIPLICACAO fator |
-    termo DIVISAO fator |
-    termo AND fator |
-    fator
+    fator MAIS expressao_simples
+        {
+            geraCodigo(NULL, "SOMA");
+        } |
+    fator MENOS expressao_simples
+        {
+            geraCodigo(NULL, "SUBT");
+        } |
+    fator MULTIPLICACAO expressao_simples
+        {
+            geraCodigo(NULL, "MULT");
+        } |
+    fator DIVISAO expressao_simples
+        {
+            geraCodigo(NULL, "DIVI");
+        } |
+    MAIS fator { /* carrega */} |
+    MENOS fator 
+        {
+            geraCodigo(NULL, "CRCT -1");
+            geraCodigo(NULL, "MULT");
+        } |
+    fator { /* carrega */}
 ;
 
 fator:
     variavel |
     numero |
     chamada_funcao |
-    expressao |
-    NEGACAO fator
+    ABRE_PARENTESES expressao FECHA_PARENTESES
+;
+
+chamada_funcao:
 ;
 
 variavel: IDENT
 ;
 
 numero:
-;
-
-chamada_funcao:
 ;
 
 

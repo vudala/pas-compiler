@@ -32,7 +32,7 @@ descarte [\t ]+
 
 ident [a-zA-Z][a-zA-Z0-9]*
 
-digito [0-9]
+numero [0-9]+
 
 comentario "(*".*"*)"
 
@@ -117,13 +117,19 @@ integer { simbolo = simb_inteiro;
           return INTEIRO;
         }
 
-bool  { simbolo = simb_boolean;
-        strncpy (token, yytext, TAM_TOKEN);
-        IMPRIME(" booleano  ");
-        return BOOLEANO;
-      }
+\+ { simbolo = simb_mais;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" mais  ");
+    return MAIS;
+}
 
-\* { simbolo = simb_divisao;
+\- { simbolo = simb_menos;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" menos  ");
+    return MENOS;
+}
+
+\* { simbolo = simb_multiplicacao;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" multiplicacao  ");
     return MULTIPLICACAO;
@@ -135,17 +141,11 @@ div { simbolo = simb_divisao;
     return DIVISAO;
 }
 
-and { simbolo = simb_and;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" and  ");
-    return AND;
-}
-
-not { simbolo = simb_not;
-    strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" negacao  ");
-    return NEGACAO;
-}
+{numero} { simbolo = simb_numero;
+          strncpy (token, yytext, TAM_TOKEN);
+          IMPRIME(" numero ");
+          return NUMERO;
+        }
 
 {ident} { simbolo = simb_identificador;
           strncpy (token, yytext, TAM_TOKEN);

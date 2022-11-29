@@ -14,4 +14,6 @@ void * pop(Stack ** base);
 
 void * top(Stack ** base);
 
+void pop_n(Stack ** base, int n);
+
 #endif

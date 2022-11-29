@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
 void destroy(Stack ** base, void (*destroyer)(void *))
 {
     void * ret = NULL;
@@ -12,6 +13,7 @@ void destroy(Stack ** base, void (*destroyer)(void *))
             destroyer(ret);
     }
 }
+
 
 void push(Stack ** base, void * v)
 {
@@ -32,6 +34,7 @@ void push(Stack ** base, void * v)
     *base = elem;
 }
 
+
 void * pop(Stack ** base)
 {
     if (base == NULL || *base == NULL)
@@ -46,10 +49,18 @@ void * pop(Stack ** base)
     return ret;
 }
 
+
 void * top(Stack ** base)
 {
     if (base == NULL || *base == NULL)
         return NULL;
 
     return (*base)->v;
+}
+
+
+void pop_n(Stack ** base, int n)
+{
+    while(base && n--)
+        pop(base);
 }

@@ -147,3 +147,4 @@ void update_types(char * type)
             en = (Entry *) el->v;
     }
 }
+
