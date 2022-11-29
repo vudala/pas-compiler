@@ -22,6 +22,8 @@ extern Stack * Tabela_Simbolos;
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
 %token INTEIRO BOOLEANO
+%token MULTIPLICACAO DIVISAO 
+%token AND NEGACAO
 
 %%
 
@@ -35,10 +37,15 @@ programa    :   {geraCodigo (NULL, "INPP");}
                 }
 ;
 
-bloco       : {nivel_lexico += 1;}
-              var
-              comando_composto
-              {nivel_lexico -= 1;}
+bloco       :   {nivel_lexico += 1;}
+                var
+                comando_composto
+                {
+                    nivel_lexico -= 1;
+                    sprintf(str_aux, "DMEM %i", num_vars);
+                    
+                    geraCodigo (NULL, str_aux);
+                }
 ;
 
 ///////////// DECLARACAO DE VARIAVEIS
@@ -57,17 +64,13 @@ declara_var :   {}
                 lista_id_var DOIS_PONTOS
                 tipo
                 {
-                    
-                    // ir ate a tabela de simbolos e atualizar o tipo delas
+                    // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
                     update_types(token);
                 }
                 PONTO_E_VIRGULA
 ;
 /////////////
 
-
-
-//
 
 tipo        : INTEIRO | BOOLEANO
 ;
@@ -113,40 +116,54 @@ relacao:
 ;
 
 expressao_simples:
-    // expressao_simples [+ - or] termo |
-    // [+ - or] termo
+    expressao_simples [+ - or] termo |
+    [+ - or] termo
 ;
 
 termo:
+    termo MULTIPLICACAO fator |
+    termo DIVISAO fator |
+    termo AND fator |
+    fator
 ;
 
+fator:
+    variavel |
+    numero |
+    chamada_funcao |
+    expressao |
+    NEGACAO fator
+;
 
+variavel: IDENT
+;
+
+numero:
+;
+
+chamada_funcao:
+;
 
 
 %%
 
 int main (int argc, char** argv) {
-   FILE* fp;
-   extern FILE* yyin;
+    FILE* fp;
+    extern FILE* yyin;
 
-   if (argc<2 || argc>2) {
-         printf("usage compilador <arq>a %d\n", argc);
-         return(-1);
-      }
+    if (argc<2 || argc>2) {
+            printf("usage compilador <arq>a %d\n", argc);
+            return(-1);
+        }
 
-   fp=fopen (argv[1], "r");
-   if (fp == NULL) {
-      printf("usage compilador <arq>b\n");
-      return(-1);
-   }
+    fp=fopen (argv[1], "r");
+    if (fp == NULL) {
+        printf("usage compilador <arq>b\n");
+        return(-1);
+    }
 
+    yyin=fp;
+    yyparse();
 
-/* -------------------------------------------------------------------
- *  Inicia a Tabela de Símbolos
- * ------------------------------------------------------------------- */
-
-   yyin=fp;
-   yyparse();
-
-   return 0;
+    return 0;
 }

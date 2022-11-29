@@ -44,7 +44,7 @@ void geraCodigo (char* rot, char* comando)
 }
 
 
-int trigger_error ( char* erro )
+void trigger_error ( char* erro )
 {
     fprintf (stderr, "Erro na linha %d - %s\n", nivel_lexico, erro);
     exit(-1);
@@ -62,8 +62,10 @@ void must_alloc(const void * ptr, const char * msg)
 void push_symbol(int category)
 {
     Entry * ne = malloc(sizeof(Entry));
+    must_alloc(ne, "malloc");
 
     ne->identifier = malloc(strlen(token));
+    must_alloc(ne->identifier, "malloc");
     strcpy(ne->identifier, token);
 
     ne->category = category;
@@ -125,6 +127,7 @@ Entry * get_entry(char * identifier)
 }
 
 
+// atualiza os tipos das variaveis simples recem declaradas
 void update_types(char * type)
 {
     Stack * el = Tabela_Simbolos;

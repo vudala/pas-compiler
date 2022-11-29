@@ -123,6 +123,30 @@ bool  { simbolo = simb_boolean;
         return BOOLEANO;
       }
 
+\* { simbolo = simb_divisao;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" multiplicacao  ");
+    return MULTIPLICACAO;
+}
+
+div { simbolo = simb_divisao;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" divisao  ");
+    return DIVISAO;
+}
+
+and { simbolo = simb_and;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" and  ");
+    return AND;
+}
+
+not { simbolo = simb_not;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" negacao  ");
+    return NEGACAO;
+}
+
 {ident} { simbolo = simb_identificador;
           strncpy (token, yytext, TAM_TOKEN);
           IMPRIME(" ident  ");
