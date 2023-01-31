@@ -47,6 +47,8 @@ bloco:
     {
         nivel_lexico -= 1;
         sprintf(str_aux, "DMEM %i", num_vars_declaradas);
+
+        print_tabela_simbolos();
         
         geraCodigo (NULL, str_aux);
     }
@@ -159,50 +161,34 @@ expressao:
 relacao: 
 ;
 
+
+
+
 expressao_simples:
-    fator MAIS expressao_simples
+    fator operando expressao_simples
         {
             if ($1 != $3) {
                 trigger_error("type mismatch");
             }
             if ($1 != tipo_inteiro) {
-                trigger_error("sum must be done between integers");
+                trigger_error("invalid operation for type");
             }
-            $$ = tipo_inteiro;
-            geraCodigo(NULL, "SOMA");
-        } |
-    fator MENOS expressao_simples
-        {   
-            if ($1 != $3) {
-                trigger_error("type mismatch");
+            switch($2) {
+                case 1:
+                    geraCodigo(NULL, "SOMA");
+                    break;
+                case 2:
+                    geraCodigo(NULL, "SUBT");
+                    break;
+                case 3:
+                    geraCodigo(NULL, "MULT");
+                    break;
+                case 4:
+                    geraCodigo(NULL, "DIVI");
+                    break;
+                default:
+                    trigger_error("unknown op code");
             }
-            if ($1 != tipo_inteiro) {
-                trigger_error("sub must be done between integers");
-            }
-            $$ = tipo_inteiro;
-            geraCodigo(NULL, "SUBT");
-        } |
-    fator MULTIPLICACAO expressao_simples
-        {
-            if ($1 != $3) {
-                trigger_error("type mismatch");
-            }
-            if ($1 != tipo_inteiro) {
-                trigger_error("mul must be done between integers");
-            }
-            $$ = tipo_inteiro;
-            geraCodigo(NULL, "MULT");
-        } |
-    fator DIVISAO expressao_simples
-        {
-            if ($1 != $3) {
-                trigger_error("type mismatch");
-            }
-            if ($1 != tipo_inteiro) {
-                trigger_error("div must be done between integers");
-            }
-            $$ = tipo_inteiro;
-            geraCodigo(NULL, "DIVI");
         } |
     MAIS fator 
         {
@@ -221,6 +207,13 @@ expressao_simples:
             geraCodigo(NULL, "MULT");
         } |
     fator {$$ = $1;}
+;
+
+operando:
+    MAIS {$$ = 1;}           |
+    MENOS {$$ = 2;}          |
+    MULTIPLICACAO {$$ = 3;}  |
+    DIVISAO {$$ = 4;}
 ;
 
 fator:
@@ -261,7 +254,7 @@ fator:
 chamada_funcao:
 ;
 
-variavel: IDENT {$$ = 99;}
+variavel: IDENT
 ;
 
 

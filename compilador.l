@@ -114,25 +114,25 @@ boolean { simbolo = simb_booleano;
 
 \+ { simbolo = simb_mais;
     strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" mais  ");
+    IMPRIME(" mais ");
     return MAIS;
 }
 
 \- { simbolo = simb_menos;
     strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" menos  ");
+    IMPRIME(" menos ");
     return MENOS;
 }
 
 \* { simbolo = simb_multiplicacao;
     strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" multiplicacao  ");
+    IMPRIME(" multiplicacao ");
     return MULTIPLICACAO;
 }
 
 div { simbolo = simb_divisao;
     strncpy (token, yytext, TAM_TOKEN);
-    IMPRIME(" divisao  ");
+    IMPRIME(" divisao ");
     return DIVISAO;
 }
 

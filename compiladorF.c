@@ -1,17 +1,3 @@
-
-/* -------------------------------------------------------------------
- *            Aquivo: compilador.c
- * -------------------------------------------------------------------
- *              Autor: Bruno Muller Junior
- *               Data: 08/2007
- *      Atualizado em: [09/08/2020, 19h:01m]
- *
- * -------------------------------------------------------------------
- *
- * Funções auxiliares ao compilador
- *
- * ------------------------------------------------------------------- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,7 +13,7 @@
 int lc = 1;
 Simbolos simbolo;
 char token[TAM_TOKEN];
-Stack * Tabela_Simbolos;
+Stack * Tabela_Simbolos = NULL;
 
 FILE* fp=NULL;
 
@@ -69,7 +55,7 @@ void print_tabela_simbolos()
         
         if (en->category == cate_vs) {
             VariavelSimples * vs = (VariavelSimples *) en->element;
-            printf("VS %s tipo %d\n", en->identifier, vs->type);
+            printf("VS %s tipo %d %d %d\n", en->identifier, vs->type, vs->address.nl, vs->address.offset);
         }   
         el = el->prev;
     }
