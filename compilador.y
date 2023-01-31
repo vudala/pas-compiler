@@ -13,7 +13,7 @@
 #include "stack.h"
 
 int num_vars_declaradas, nivel_lexico = -1, offset;
-char str_aux[100];
+char str_aux[100], atrib_aux[100];
 extern Stack * Tabela_Simbolos;
 extern Stack * Pilha_Tipos;
 
@@ -23,7 +23,7 @@ extern Stack * Pilha_Tipos;
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
-%token INTEIRO NUMERO
+%token INTEIRO BOOLEANO NUMERO 
 %token MAIS MENOS MULTIPLICACAO DIVISAO 
 
 %%
@@ -86,7 +86,7 @@ declara_var:
 
 
 tipo:
-    INTEIRO
+    INTEIRO | BOOLEANO
 ;
 
 lista_id_var:   
@@ -125,9 +125,26 @@ comando:
 ;
 
 atribuicao:
-    variavel ATRIBUICAO expressao
+    variavel {strcpy(atrib_aux, token);} ATRIBUICAO expressao
     {
         // armazenar valor da expressao que foi calculado
+        Entry * en = get_entry(atrib_aux);
+
+        if (!en) {
+            trigger_error("unknown variable");
+        }
+
+        if (en->category == cate_vs) {
+            VariavelSimples * vs = en->element;
+
+            $$ = vs->type;
+            sprintf(str_aux, "ARMZ %d, %d", vs->address.nl, vs->address.offset);
+        
+            geraCodigo(NULL, str_aux);
+        }
+        else if (en->category == cate_pf) {
+            // do something
+        }
     }
 ;
 
@@ -145,6 +162,9 @@ expressao_simples:
             if ($1 != $3) {
                 trigger_error("type mismatch");
             }
+            if ($1 != tipo_inteiro) {
+                trigger_error("sum must be done between integers");
+            }
 
             geraCodigo(NULL, "SOMA");
         } |
@@ -153,12 +173,18 @@ expressao_simples:
             if ($1 != $3) {
                 trigger_error("type mismatch");
             }
+            if ($1 != tipo_inteiro) {
+                trigger_error("sub must be done between integers");
+            }
             geraCodigo(NULL, "SUBT");
         } |
     fator MULTIPLICACAO expressao_simples
         {
             if ($1 != $3) {
                 trigger_error("type mismatch");
+            }
+            if ($1 != tipo_inteiro) {
+                trigger_error("mul must be done between integers");
             }
             geraCodigo(NULL, "MULT");
         } |
@@ -167,9 +193,17 @@ expressao_simples:
             if ($1 != $3) {
                 trigger_error("type mismatch");
             }
+            if ($1 != tipo_inteiro) {
+                trigger_error("div must be done between integers");
+            }
             geraCodigo(NULL, "DIVI");
         } |
-    MAIS fator { /* carrega */} |
+    MAIS fator 
+        {
+            if ($2 != tipo_inteiro) {
+                trigger_error("invalid operation");
+            }
+        } |
     MENOS fator 
         {
             if ($2 != tipo_inteiro) {
@@ -178,7 +212,7 @@ expressao_simples:
             geraCodigo(NULL, "CRCT -1");
             geraCodigo(NULL, "MULT");
         } |
-    fator { /* carrega */}
+    fator
 ;
 
 fator:
@@ -188,7 +222,7 @@ fator:
             Entry * en = get_entry(token);
 
             if (!en) {
-                trigger_error("invalid identifier");
+                trigger_error("unknown variable");
             }
 
             if (en->category == cate_vs) {
@@ -200,10 +234,10 @@ fator:
                 geraCodigo(NULL, str_aux);
             }
             else if (en->category == cate_pf) {
-                // do nothing
+                // do something
             }
             else if (en->category == cate_proc) {
-                // do nothing
+                // do nothing (yet)
             }
         } |
     NUMERO 

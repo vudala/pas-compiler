@@ -1,16 +1,3 @@
-/* -------------------------------------------------------------------
- *            Arquivo: compilador.h
- * -------------------------------------------------------------------
- *              Autor: Bruno Muller Junior
- *               Data: 08/2007
- *      Atualizado em: [09/08/2020, 19h:01m]
- *
- * -------------------------------------------------------------------
- *
- * Tipos, protótipos e variáveis globais do compilador (via extern)
- *
- * ------------------------------------------------------------------- */
-
 #define TAM_TOKEN 16
 
 typedef enum simbolos {
@@ -18,7 +5,7 @@ typedef enum simbolos {
     simb_identificador, simb_numero,
     simb_ponto, simb_virgula, simb_ponto_e_virgula, simb_dois_pontos,
     simb_atribuicao, simb_abre_parenteses, simb_fecha_parenteses,
-    simb_inteiro, simb_boolean,
+    simb_inteiro, simb_booleano,
     simb_mais, simb_menos, simb_multiplicacao, simb_divisao,
     simb_and, simb_not
 } Simbolos; 
@@ -26,14 +13,15 @@ typedef enum simbolos {
 
 typedef enum tipo {
     tipo_indefinido = 0,
-    tipo_inteiro
+    tipo_inteiro,
+    tipo_booleano
 } Tipo;
 
 /* -------------------------------------------------------------------
  * variáveis globais
  * ------------------------------------------------------------------- */
 
-extern Simbolos simbolo, relacao;
+extern Simbolos simbolo;
 extern char token[TAM_TOKEN];
 extern int nivel_lexico;
 extern int offset;
@@ -65,17 +53,11 @@ typedef struct entry_t {
     } category;
 } Entry;
 
-/* -------------------------------------------------------------------
- * prototipos globais
- * ------------------------------------------------------------------- */
-
 void geraCodigo (char*, char*);
 int yylex();
 void yyerror(const char *s);
 
 void push_symbol(int category);
-
-void push_tipo(Tipo tipo);
 
 void entry_destroy(void * ptr);
 
@@ -84,3 +66,6 @@ void update_types(char * type);
 void trigger_error (char* erro);
 
 Entry * get_entry(char * identifier);
+
+
+void print_tabela_simbolos();

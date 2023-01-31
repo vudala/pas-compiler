@@ -1,19 +1,4 @@
-
-/* -------------------------------------------------------------------
- *            Arquivo: compilador.l
- * -------------------------------------------------------------------
- *              Autor: Bruno Muller Junior
- *               Data: 08/2007
- *      Atualizado em: [09/08/2020, 19h:01m]
- *
- * -------------------------------------------------------------------
- *
- * Tipos, protótipos e variáveis globais do compilador (via extern)
- *
- * ------------------------------------------------------------------- */
-
 %{
-
 
 #include<stdio.h>
 #include<string.h>
@@ -117,8 +102,14 @@ end { simbolo = simb_end;
 
 integer { simbolo = simb_inteiro;
           strncpy (token, yytext, TAM_TOKEN);
-          IMPRIME(" inteiro  ");
+          IMPRIME(" inteiro ");
           return INTEIRO;
+        }
+
+boolean { simbolo = simb_booleano;
+          strncpy (token, yytext, TAM_TOKEN);
+          IMPRIME(" booleano ");
+          return BOOLEANO;
         }
 
 \+ { simbolo = simb_mais;

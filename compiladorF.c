@@ -28,7 +28,6 @@ int lc = 1;
 Simbolos simbolo;
 char token[TAM_TOKEN];
 Stack * Tabela_Simbolos;
-Stack * Pilha_Tipos; // usada pra saber se uma expressao é valida
 
 FILE* fp=NULL;
 
@@ -57,6 +56,21 @@ void must_alloc(const void * ptr, const char * msg)
     if (!ptr) {
         perror(msg);
         exit(-1);
+    }
+}
+
+
+void print_tabela_simbolos()
+{
+    Stack * el = Tabela_Simbolos;
+    while(el != NULL) {
+        Entry * en = (Entry *) el->v;
+        
+        if (en->category == cate_vs) {
+            VariavelSimples * vs = (VariavelSimples *) en->element;
+            printf("VS %s tipo %d\n", en->identifier, vs->type);
+        }   
+        el = el->prev;
     }
 }
 
@@ -93,16 +107,6 @@ void push_symbol(int category)
 }
 
 
-void push_tipo(Tipo tipo)
-{
-    int * ne = malloc(sizeof(int));
-    must_alloc(ne, __func__);
-
-    *ne = tipo;
-    push(Pilha_Tipos, ne);
-}
-
-
 void entry_destroy(void * ptr)
 {
     Entry * ent = (Entry *) ptr;
@@ -114,6 +118,8 @@ void entry_destroy(void * ptr)
 int get_type_enum(char * type)
 {
     if (!strcmp(type, "integer")) return tipo_inteiro;
+
+    if (!strcmp(type, "boolean")) return tipo_booleano;
 
     trigger_error("tipo inexistente\n");
 
@@ -131,7 +137,8 @@ Entry * get_entry(char * identifier)
             return en;
 
         el = el->prev;
-        en = (Entry*) el->v;
+        if (el)
+            en = (Entry*) el->v;
     }
 
     return NULL;
@@ -169,7 +176,7 @@ void update_types(char * type)
     while(el && en && en->category == cate_vs) {
         vs = (VariavelSimples*) en->element;
 
-        if (nivel_lexico != vs->address.nl)
+        if (nivel_lexico != vs->address.nl || vs->type != tipo_indefinido)
             return;
 
         vs->type = get_type_enum(type);
