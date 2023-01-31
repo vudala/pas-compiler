@@ -26,8 +26,7 @@ typedef enum simbolos {
 
 typedef enum tipo {
     tipo_indefinido = 0,
-    tipo_inteiro,
-    tipo_booleano
+    tipo_inteiro
 } Tipo;
 
 /* -------------------------------------------------------------------
@@ -58,7 +57,7 @@ typedef struct parametro_formal {
 
 typedef struct entry_t {
     char * identifier;  // identificador
-    void * element;     // vs, proc, pf
+    void * element;     // valor
     enum {
         cate_vs = 0,    // variavel simples
         cate_proc,      // procedimento
@@ -76,6 +75,12 @@ void yyerror(const char *s);
 
 void push_symbol(int category);
 
+void push_tipo(Tipo tipo);
+
 void entry_destroy(void * ptr);
 
 void update_types(char * type);
+
+void trigger_error (char* erro);
+
+Entry * get_entry(char * identifier);

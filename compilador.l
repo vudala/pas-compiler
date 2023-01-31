@@ -21,6 +21,8 @@
 #include "compilador.h"
 #include "compilador.tab.h"
 
+extern int lc;
+
 #define IMPRIME(STR) printf("", STR, token);
 // #define IMPRIME(STR) printf("%s    # %s \n", STR, token);
 
@@ -38,7 +40,9 @@ comentario "(*".*"*)"
 
 %%
 
-{pulo_linha}
+{pulo_linha} {
+    lc++;
+}
 
 {descarte}
 

@@ -24,9 +24,11 @@
  *  variáveis globais
  * ------------------------------------------------------------------- */
 
-Simbolos simbolo, relacao;
+int lc = 1;
+Simbolos simbolo;
 char token[TAM_TOKEN];
 Stack * Tabela_Simbolos;
+Stack * Pilha_Tipos; // usada pra saber se uma expressao é valida
 
 FILE* fp=NULL;
 
@@ -44,9 +46,9 @@ void geraCodigo (char* rot, char* comando)
 }
 
 
-void trigger_error ( char* erro )
+void trigger_error (char* erro)
 {
-    fprintf (stderr, "Erro na linha %d - %s\n", nivel_lexico, erro);
+    fprintf (stderr, "Erro na linha %d - %s\n", lc, erro);
     exit(-1);
 }
 
@@ -91,6 +93,16 @@ void push_symbol(int category)
 }
 
 
+void push_tipo(Tipo tipo)
+{
+    int * ne = malloc(sizeof(int));
+    must_alloc(ne, __func__);
+
+    *ne = tipo;
+    push(Pilha_Tipos, ne);
+}
+
+
 void entry_destroy(void * ptr)
 {
     Entry * ent = (Entry *) ptr;
@@ -102,7 +114,6 @@ void entry_destroy(void * ptr)
 int get_type_enum(char * type)
 {
     if (!strcmp(type, "integer")) return tipo_inteiro;
-    if (!strcmp(type, "bool")) return tipo_booleano;
 
     trigger_error("tipo inexistente\n");
 
@@ -124,6 +135,27 @@ Entry * get_entry(char * identifier)
     }
 
     return NULL;
+}
+
+
+void * get_entry_value(Entry * en)
+{
+    if (!en) {
+        trigger_error("must have a valid entry");
+    }
+
+    if (en->category == cate_vs) {
+        return en->element;
+    }
+    else if (en->category == cate_pf) {
+
+    }
+    else if (en->category == cate_proc) {
+
+    }
+    else {
+        trigger_error("unknown entry category");
+    }   
 }
 
 
