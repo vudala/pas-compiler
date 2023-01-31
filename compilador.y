@@ -127,7 +127,7 @@ comando:
 atribuicao:
     variavel {strcpy(atrib_aux, token);} ATRIBUICAO expressao
     {
-        // armazenar valor da expressao que foi calculado
+        // armazenar valor da expressao que foi calculada
         Entry * en = get_entry(atrib_aux);
 
         if (!en) {
@@ -137,7 +137,10 @@ atribuicao:
         if (en->category == cate_vs) {
             VariavelSimples * vs = en->element;
 
-            $$ = vs->type;
+            if (vs->type != $4) {
+                trigger_error("type mismatch");
+            }
+
             sprintf(str_aux, "ARMZ %d, %d", vs->address.nl, vs->address.offset);
         
             geraCodigo(NULL, str_aux);
@@ -150,7 +153,7 @@ atribuicao:
 
 expressao: 
     expressao relacao expressao_simples |
-    expressao_simples;
+    expressao_simples {$$ = $1;}
 ;
 
 relacao: 
@@ -165,7 +168,7 @@ expressao_simples:
             if ($1 != tipo_inteiro) {
                 trigger_error("sum must be done between integers");
             }
-
+            $$ = tipo_inteiro;
             geraCodigo(NULL, "SOMA");
         } |
     fator MENOS expressao_simples
@@ -176,6 +179,7 @@ expressao_simples:
             if ($1 != tipo_inteiro) {
                 trigger_error("sub must be done between integers");
             }
+            $$ = tipo_inteiro;
             geraCodigo(NULL, "SUBT");
         } |
     fator MULTIPLICACAO expressao_simples
@@ -186,6 +190,7 @@ expressao_simples:
             if ($1 != tipo_inteiro) {
                 trigger_error("mul must be done between integers");
             }
+            $$ = tipo_inteiro;
             geraCodigo(NULL, "MULT");
         } |
     fator DIVISAO expressao_simples
@@ -196,6 +201,7 @@ expressao_simples:
             if ($1 != tipo_inteiro) {
                 trigger_error("div must be done between integers");
             }
+            $$ = tipo_inteiro;
             geraCodigo(NULL, "DIVI");
         } |
     MAIS fator 
@@ -203,16 +209,18 @@ expressao_simples:
             if ($2 != tipo_inteiro) {
                 trigger_error("invalid operation");
             }
+            $$ = tipo_inteiro;
         } |
     MENOS fator 
         {
             if ($2 != tipo_inteiro) {
                 trigger_error("invalid operation");
             }
+            $$ = tipo_inteiro;
             geraCodigo(NULL, "CRCT -1");
             geraCodigo(NULL, "MULT");
         } |
-    fator
+    fator {$$ = $1;}
 ;
 
 fator:
@@ -253,7 +261,7 @@ fator:
 chamada_funcao:
 ;
 
-variavel: IDENT
+variavel: IDENT {$$ = 99;}
 ;
 
 

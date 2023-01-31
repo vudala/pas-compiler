@@ -51,6 +51,7 @@ void trigger_error (char* erro)
     exit(-1);
 }
 
+
 void must_alloc(const void * ptr, const char * msg)
 {
     if (!ptr) {
@@ -142,27 +143,6 @@ Entry * get_entry(char * identifier)
     }
 
     return NULL;
-}
-
-
-void * get_entry_value(Entry * en)
-{
-    if (!en) {
-        trigger_error("must have a valid entry");
-    }
-
-    if (en->category == cate_vs) {
-        return en->element;
-    }
-    else if (en->category == cate_pf) {
-
-    }
-    else if (en->category == cate_proc) {
-
-    }
-    else {
-        trigger_error("unknown entry category");
-    }   
 }
 
 
