@@ -206,11 +206,7 @@ comando_condicional:
 ;
 
 expressao: 
-    expressao relacao expressao_simples |
     expressao_simples {$$ = $1;}
-;
-
-relacao: 
 ;
 
 expressao_simples:
@@ -255,18 +251,18 @@ expressao_simples:
 ;
 
 operador:
-    MAIS {$$ = 1;}           |
-    MENOS {$$ = 2;}          |
-    MULTIPLICACAO {$$ = 3;}  |
-    DIVISAO {$$ = 4;}        |
-    IGUAL {$$ = 5;}          |
-    DIFERENTE {$$ = 6;}      |
-    MENOR {$$ = 7;}          |
-    MAIOR {$$ = 8;}          |
-    MENOR_IGUAL {$$ = 9;}    |
-    MAIOR_IGUAL {$$ = 10;}   |
-    AND {$$ = 11;}           |
-    OR {$$ = 13;}            
+    MAIS            {$$ = 1;}  |
+    MENOS           {$$ = 2;}  |
+    MULTIPLICACAO   {$$ = 3;}  |
+    DIVISAO         {$$ = 4;}  |
+    IGUAL           {$$ = 5;}  |
+    DIFERENTE       {$$ = 6;}  |
+    MENOR           {$$ = 7;}  |
+    MAIOR           {$$ = 8;}  |
+    MENOR_IGUAL     {$$ = 9;}  |
+    MAIOR_IGUAL     {$$ = 10;} |
+    AND             {$$ = 11;} |
+    OR              {$$ = 13;}            
 ;
 
 fator:
