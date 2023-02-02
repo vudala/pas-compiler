@@ -25,6 +25,9 @@ extern Stack * Pilha_Tipos;
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
 %token INTEIRO BOOLEANO NUMERO 
 %token MAIS MENOS MULTIPLICACAO DIVISAO 
+%token IF THEN ELSE
+%token MENOR MAIOR IGUAL DIFERENTE AND OR NOT
+%token MENOR_IGUAL MAIOR_IGUAL
 
 %%
 
@@ -123,7 +126,8 @@ comandos:
 ;
 
 comando: 
-    atribuicao
+    atribuicao |
+    comando_condicional
 ;
 
 atribuicao:
@@ -143,13 +147,64 @@ atribuicao:
                 trigger_error("type mismatch");
             }
 
-            sprintf(str_aux, "ARMZ %d, %d", vs->address.nl, vs->address.offset);
+            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
         
             geraCodigo(NULL, str_aux);
         }
         else if (en->category == cate_pf) {
             // do something
         }
+    }
+;
+
+comando_condicional:
+    IF ABRE_PARENTESES expressao FECHA_PARENTESES
+    {
+        int rot = create_rotulo();
+ 
+        sprintf(str_aux, "DSVF R%d", rot);
+        geraCodigo(NULL, str_aux);
+    }
+    THEN T_BEGIN comandos T_END
+    {
+        int rot = create_rotulo();
+        sprintf(str_aux, "DSVS R%d", rot);
+        geraCodigo(NULL, str_aux);
+
+        Stack* rot2 = get_top_rotulo();
+        int* value = (int*) rot2->prev->v;
+        sprintf(str_aux, "R%d", *value);
+        geraCodigo(str_aux, "NADA");
+    }
+    ELSE T_BEGIN comandos T_END
+    {
+        if ($3 != tipo_booleano) {
+            trigger_error("invalid type for if");
+        }
+
+        Stack* rot = get_top_rotulo();
+        int* value = (int*) rot->v;
+        sprintf(str_aux, "R%d", *value);
+        geraCodigo(str_aux, "NADA");
+    } |
+
+    IF ABRE_PARENTESES expressao FECHA_PARENTESES
+    {
+        int rot = create_rotulo();
+        
+        sprintf(str_aux, "DSVF R%d", rot);
+        geraCodigo(NULL, str_aux);
+    } 
+    THEN T_BEGIN comandos T_END
+    {
+        if ($3 != tipo_booleano) {
+            trigger_error("invalid type for if");
+        }
+
+        Stack* rot = get_top_rotulo();
+        int* value = (int*) rot->v;
+        sprintf(str_aux, "R%d", *value);
+        geraCodigo(str_aux, "NADA");
     }
 ;
 
@@ -161,34 +216,20 @@ expressao:
 relacao: 
 ;
 
-
-
-
 expressao_simples:
     fator operando expressao_simples
         {
             if ($1 != $3) {
                 trigger_error("type mismatch");
             }
-            if ($1 != tipo_inteiro) {
-                trigger_error("invalid operation for type");
+            if ($1 == tipo_inteiro && !check_valid_int_operation($2)) {
+                trigger_error("invalid operation for int");
             }
-            switch($2) {
-                case 1:
-                    geraCodigo(NULL, "SOMA");
-                    break;
-                case 2:
-                    geraCodigo(NULL, "SUBT");
-                    break;
-                case 3:
-                    geraCodigo(NULL, "MULT");
-                    break;
-                case 4:
-                    geraCodigo(NULL, "DIVI");
-                    break;
-                default:
-                    trigger_error("unknown op code");
-            }
+            if($1 == tipo_booleano && !check_valid_bool_operation($2)) {
+                trigger_error("invalid operation for bool");
+            } 
+            $$ = resolve_operation_return($1, $3, $2);
+            print_operand_code($2);
         } |
     MAIS fator 
         {
@@ -203,8 +244,15 @@ expressao_simples:
                 trigger_error("invalid operation");
             }
             $$ = tipo_inteiro;
-            geraCodigo(NULL, "CRCT -1");
-            geraCodigo(NULL, "MULT");
+            geraCodigo(NULL, "INVR");
+        } |
+    NOT fator 
+        {
+            if ($2 != tipo_inteiro) {
+                trigger_error("invalid operation");
+            }
+            $$ = tipo_booleano;
+            geraCodigo(NULL, "NEGA");
         } |
     fator {$$ = $1;}
 ;
@@ -213,7 +261,16 @@ operando:
     MAIS {$$ = 1;}           |
     MENOS {$$ = 2;}          |
     MULTIPLICACAO {$$ = 3;}  |
-    DIVISAO {$$ = 4;}
+    DIVISAO {$$ = 4;}        |
+    IGUAL {$$ = 5;}          |
+    DIFERENTE {$$ = 6;}      |
+    MENOR {$$ = 7;}          |
+    MAIOR {$$ = 8;}          |
+    MENOR_IGUAL {$$ = 9;}    |
+    MAIOR_IGUAL {$$ = 10;}   |
+    AND {$$ = 11;}           |
+    OR {$$ = 13;}            
+
 ;
 
 fator:
@@ -230,7 +287,7 @@ fator:
                 VariavelSimples * vs = en->element;
 
                 $$ = vs->type;
-                sprintf(str_aux, "CRVL %d, %d", vs->address.nl, vs->address.offset);
+                sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
             
                 geraCodigo(NULL, str_aux);
             }

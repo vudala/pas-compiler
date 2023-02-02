@@ -7,7 +7,9 @@ typedef enum simbolos {
     simb_atribuicao, simb_abre_parenteses, simb_fecha_parenteses,
     simb_inteiro, simb_booleano,
     simb_mais, simb_menos, simb_multiplicacao, simb_divisao,
-    simb_and, simb_not
+    simb_if, simb_then, simb_else,
+    simb_menor, simb_maior, simb_menor_igual, simb_maior_igual,
+    simb_igual, simb_diferente, simb_and, simb_not, simb_or
 } Simbolos; 
 
 
@@ -31,7 +33,6 @@ typedef struct mepa_addr {
 } MEPA_Address;
 
 typedef struct variavel_simples {
-    MEPA_Address address;
 	Tipo type;
 } VariavelSimples;
 
@@ -46,6 +47,7 @@ typedef struct parametro_formal {
 typedef struct entry_t {
     char * identifier;  // identificador
     void * element;     // valor
+    MEPA_Address addr;        // endereço na memória
     enum {
         cate_vs = 0,    // variavel simples
         cate_proc,      // procedimento
@@ -67,5 +69,12 @@ void trigger_error (char* erro);
 
 Entry * get_entry(char * identifier);
 
+void print_operand_code(int operand);
+
+int check_valid_int_operation(int operand);
+
+int check_valid_bool_operation(int operand);
+
+int resolve_operation_return(int op1, int op2, int operand);
 
 void print_tabela_simbolos();

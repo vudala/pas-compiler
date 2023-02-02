@@ -14,6 +14,9 @@ int lc = 1;
 Simbolos simbolo;
 char token[TAM_TOKEN];
 Stack * Tabela_Simbolos = NULL;
+int Rotulo = 1;
+
+Stack * Rotulos = NULL;
 
 FILE* fp=NULL;
 
@@ -55,7 +58,7 @@ void print_tabela_simbolos()
         
         if (en->category == cate_vs) {
             VariavelSimples * vs = (VariavelSimples *) en->element;
-            printf("VS %s tipo %d %d %d\n", en->identifier, vs->type, vs->address.nl, vs->address.offset);
+            printf("VS %s tipo %d %d %d\n", en->identifier, vs->type, en->addr.nl, en->addr.offset);
         }   
         el = el->prev;
     }
@@ -70,16 +73,29 @@ void push_symbol(int category)
     ne->identifier = malloc(strlen(token));
     must_alloc(ne->identifier, "malloc");
     strcpy(ne->identifier, token);
+    ne->addr.nl = nivel_lexico;
+    ne->addr.offset = offset;
 
     ne->category = category;
+
+    Stack* el = Tabela_Simbolos;
+    while(el != NULL){
+        Entry* entry = (Entry*) el->v;
+
+        if(entry->addr.nl != nivel_lexico)
+            break;
+
+        if(strcmp(entry->identifier, ne->identifier) == 0)
+            trigger_error("identificador ja declarado");
+        
+        el = el->prev;
+    }
 
     if (category == cate_vs) {
         VariavelSimples * vs = malloc(sizeof(VariavelSimples));
         must_alloc(vs, "malloc");
 
         vs->type = tipo_indefinido;
-        vs->address.nl = nivel_lexico;
-        vs->address.offset = offset;
 
         ne->element = (void*) vs;
     }
@@ -142,7 +158,7 @@ void update_types(char * type)
     while(el && en && en->category == cate_vs) {
         vs = (VariavelSimples*) en->element;
 
-        if (nivel_lexico != vs->address.nl || vs->type != tipo_indefinido)
+        if (nivel_lexico != en->addr.nl || vs->type != tipo_indefinido)
             return;
 
         vs->type = get_type_enum(type);
@@ -151,5 +167,88 @@ void update_types(char * type)
         if (el)
             en = (Entry *) el->v;
     }
+}
+
+void print_operand_code(int operand){
+    switch(operand) {
+        case 1:
+            geraCodigo(NULL, "SOMA");
+            break;
+        case 2:
+            geraCodigo(NULL, "SUBT");
+            break;
+        case 3:
+            geraCodigo(NULL, "MULT");
+            break;
+        case 4:
+            geraCodigo(NULL, "DIVI");
+            break;
+        case 5:
+            geraCodigo(NULL, "CMIG");
+            break;
+        case 6:
+            geraCodigo(NULL, "CMDG");
+            break;
+        case 7:
+            geraCodigo(NULL, "CMME");
+            break;
+        case 8:
+            geraCodigo(NULL, "CMMA");
+            break;
+        case 9:
+            geraCodigo(NULL, "CMEG");
+            break;
+        case 10:
+            geraCodigo(NULL, "CMAG");
+            break;
+        case 11:
+            geraCodigo(NULL, "CONJ");
+            break;
+        case 12:
+            geraCodigo(NULL, "DISJ");
+            break;
+        default:
+            trigger_error("unknown op code");
+    }
+}
+
+int check_valid_int_operation(int operand){
+    if (1 <= operand  && operand <= 11)
+        return 1;
+    return 0;
+}
+
+int check_valid_bool_operation(int operand){
+    if (12 <= operand && operand <= 13 || 5 <= operand  && operand <= 6)
+        return 1;
+    return 0;
+}
+
+int resolve_operation_return(int op1, int op2, int operand){
+    if (5 <= operand && operand <= 10 && op1 == tipo_inteiro && op2 == tipo_inteiro)
+        return tipo_booleano;
+
+    if (1 <= operand && operand <= 4 && op1 == tipo_inteiro && op2 == tipo_inteiro)
+        return tipo_inteiro;
+
+    if(op1 == tipo_booleano && op2 == tipo_booleano)
+        return tipo_booleano;
+
+    trigger_error("invalid operation");
+
+    return tipo_indefinido;
+}
+
+int create_rotulo(){
+    int * rot = malloc(sizeof(int));
+    must_alloc(rot, __func__);
+    *rot = Rotulo++;
+    push(&Rotulos, (void*) rot);
+    
+    return *rot;
+}
+
+Stack* get_top_rotulo(){
+    return Rotulos;
 }
 

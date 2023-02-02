@@ -16,4 +16,8 @@ void * top(Stack ** base);
 
 void pop_n(Stack ** base, int n);
 
+int create_rotulo();
+
+Stack* get_top_rotulo();
+
 #endif

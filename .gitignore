@@ -54,3 +54,9 @@ dkms.conf
 
 MEPA
 *.output
+compilador.tab.* 
+lex.yy.c 
+compilador.o 
+stack.o 
+compilador.output 
+compilador
