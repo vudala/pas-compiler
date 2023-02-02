@@ -161,9 +161,6 @@ atribuicao:
 
 comando_condicional: 
     if_then cond_else
-    { 
-        
-    }
 ;
 
 if_then: 
@@ -311,7 +308,7 @@ fator:
             sprintf(str_aux, "CRCT 0");
             generate_code(-1, str_aux);
         } |
-    ABRE_PARENTESES expressao FECHA_PARENTESES
+    ABRE_PARENTESES expressao FECHA_PARENTESES {$$ = $2;}
 ;
 
 
