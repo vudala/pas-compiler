@@ -5,17 +5,15 @@ begin
     m := 3;
     n := 39 + m;
 
-    if(m = 2) then
+    if (m = 2) then
     begin
-        m := 1;
-
-        if(n = 42) then
+        m := 32;
+        m := 32;
+        m := 32;
+        m := 32;
+        if (1 < 2) then
         begin
-            m := 32;
-        end
-        else
-        begin
-            m := 37;
+            m := 2;
         end;
     end
     else

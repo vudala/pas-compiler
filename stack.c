@@ -7,8 +7,9 @@
 void destroy(Stack ** base, void (*destroyer)(void *))
 {
     void * ret = NULL;
-    while (*base != NULL) {
-        ret = pop(base);
+    Stack * el = top(*base);
+    while (el != NULL) {
+        ret = pop(&el);
         if (ret)
             destroyer(ret);
     }
@@ -33,7 +34,7 @@ void push(Stack ** base, void * v)
         elem->prev = NULL;
     }
     else {
-        Stack * top_el = *base;
+        Stack * top_el = top(*base);
         elem->prev = top_el;
         top_el->next = elem;
     }
@@ -49,6 +50,8 @@ void * pop(Stack ** base)
 
     Stack * el = *base;
     *base = el->prev;
+    if (*base)
+        (*base)->next = NULL;
 
     void * ret = el->v;
     free(el);
@@ -59,19 +62,20 @@ void * pop(Stack ** base)
 
 void pop_n(Stack ** base, unsigned int n)
 {
+    *base = top(*base);
     if (base)
         while(*base && n--)
             pop(base);
 }
 
 
-Stack * top(Stack ** base)
+Stack * top(Stack * base)
 {
-    if (base == NULL || *base == NULL)
+    if (base == NULL)
         return NULL;
     
     Stack * top_el = NULL;
-    Stack * el = *base;
+    Stack * el = base;
     while(el != NULL) {
         top_el = el;
         el = el->next;

@@ -261,10 +261,7 @@ int create_label()
 
     *rot = Label_Counter++;
 
-    printf("%p create %d\n", Labels, *rot); fflush(stdout);
     push(&Labels, (void*) rot);
-
-    printf("created at %p\n", Labels);
     
     return *rot;
 }
@@ -272,18 +269,12 @@ int create_label()
 
 Stack * get_top_label()
 {
-    return top(&Labels);
+    return top(Labels);
 }
 
 
 // destroy n rotulos da pilha
 void destroy_labels(unsigned int n)
 {
-    printf("top was %p\n", Labels); fflush(stdout);
-        while(Labels && n--) {
-            printf("destroying %p\n", Labels); fflush(stdout);
-            pop(&Labels);
-            printf("destroyed, next in line: %p\n", Labels);
-        }
-    printf("top is %p\n", Labels); fflush(stdout);
+    pop_n(&Labels, n);
 }

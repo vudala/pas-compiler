@@ -42,7 +42,7 @@ programa:
 
 bloco:
     {nivel_lexico += 1;}
-    var
+    declaracao_variaveis
     comando_composto
     {
         nivel_lexico -= 1;
@@ -56,7 +56,7 @@ bloco:
 
 
 ///////////// DECLARACAO DE VARIAVEIS
-var:   
+declaracao_variaveis:   
     {
         num_vars_declaradas = 0;
         offset = 0;
@@ -108,23 +108,25 @@ lista_id_var:
     }
 ;
 
+
 lista_idents:
     lista_idents VIRGULA IDENT |
     IDENT
 ;
 
 comando_composto: 
-    T_BEGIN comandos T_END
+    T_BEGIN lista_comando T_END
 ;
 
-comandos:
-    comando PONTO_E_VIRGULA comandos |
-    comando PONTO_E_VIRGULA
+lista_comando:
+    lista_comando PONTO_E_VIRGULA comando |
+    comando
 ;
 
 comando: 
     atribuicao |
-    comando_condicional
+    comando_condicional |
+    comando_composto
 ;
 
 atribuicao:
@@ -157,12 +159,15 @@ atribuicao:
 comando_condicional:
     IF ABRE_PARENTESES expressao FECHA_PARENTESES
         {
+            if ($3 != tipo_booleano)
+                trigger_error("invalid expression on if evaluation");
+
             int rot = create_label();
     
             sprintf(str_aux, "DSVF R%d", rot);
             generate_code(-1, str_aux);
         }
-    THEN T_BEGIN comandos T_END
+    THEN comando
         {
             int rot1 = create_label();
             sprintf(str_aux, "DSVS R%d", rot1);
@@ -172,12 +177,8 @@ comando_condicional:
             int * value = (int*) rot2->prev->v;
             generate_code(*value, "NADA");
         }
-    ELSE T_BEGIN comandos T_END
+    ELSE comando
         {
-            if ($3 != tipo_booleano) {
-                trigger_error("invalid type for if");
-            }
-
             Stack* rot = get_top_label();
             int* value = (int*) rot->v;
             generate_code(*value, "NADA");
@@ -187,16 +188,16 @@ comando_condicional:
         
     IF ABRE_PARENTESES expressao FECHA_PARENTESES
         {
+            if ($3 != tipo_booleano)
+                trigger_error("invalid expression on if evaluation");
+
             int rot = create_label();
             
             sprintf(str_aux, "DSVF R%d", rot);
             generate_code(-1, str_aux);
         } 
-    THEN T_BEGIN comandos T_END
+    THEN comando
         {
-            if ($3 != tipo_booleano)
-                trigger_error("invalid type for if");
-
             Stack * rot = get_top_label();
             int * value = (int*) rot->v;
             generate_code(*value, "NADA");

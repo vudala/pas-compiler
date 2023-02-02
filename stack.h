@@ -14,6 +14,6 @@ void * pop(Stack ** base);
 
 void pop_n(Stack ** base, unsigned int n);
 
-Stack * top(Stack ** base);
+Stack * top(Stack * base);
 
 #endif
