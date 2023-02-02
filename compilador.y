@@ -234,11 +234,7 @@ comando_repetitivo:
 ;
 
 expressao:
-    expressao_simples {$$ = $1;}
-;
-
-expressao_simples:
-    fator operador expressao_simples
+    expressao_simples relacao expressao_simples
         {
             if ($1 != $3)
                 trigger_error("type mismatch");
@@ -252,14 +248,51 @@ expressao_simples:
             $$ = resolve_operation_return($1, $3, $2);
             print_operation_code($2);
         } |
-    MAIS fator 
+    expressao_simples {$$ = $1;}
+;
+
+expressao_simples:
+    expressao_simples OR termo 
+        {
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_booleano || $3 != tipo_booleano)
+                trigger_error("invalid operation");
+
+            $$ = tipo_booleano;
+            generate_code(-1, "DISJ");
+        } |
+    expressao_simples MENOS termo
+        {
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_inteiro || $3 != tipo_inteiro)
+                trigger_error("invalid operation");
+
+            $$ = tipo_inteiro;
+            generate_code(-1, "SUBT");
+        }|
+    expressao_simples MAIS termo
+        {
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_inteiro || $3 != tipo_inteiro)
+                trigger_error("invalid operation");
+
+            $$ = tipo_inteiro;
+            generate_code(-1, "SOMA");
+        }  |
+    MAIS termo
         {
             if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
 
             $$ = tipo_inteiro;
         } |
-    MENOS fator 
+    MENOS termo
         {
             if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
@@ -267,30 +300,53 @@ expressao_simples:
             $$ = tipo_inteiro;
             generate_code(-1, "INVR");
         } |
-    NOT fator 
+    termo {$$ = $1;}
+;
+
+termo:
+    termo MULTIPLICACAO fator
         {
-            if ($2 != tipo_booleano)
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_inteiro || $3 != tipo_inteiro)
+                trigger_error("invalid operation");
+
+            $$ = tipo_inteiro;
+            generate_code(-1, "MULT");
+        } |
+    termo DIVISAO fator 
+        {
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_inteiro || $3 != tipo_inteiro)
+                trigger_error("invalid operation");
+
+            $$ = tipo_inteiro;
+            generate_code(-1, "DIVI");
+        } |
+    termo AND fator
+        {
+            if ($1 != $3)
+                trigger_error("type mismatch");
+
+            if ($1 != tipo_booleano || $3 != tipo_booleano)
                 trigger_error("invalid operation");
 
             $$ = tipo_booleano;
-            generate_code(-1, "NEGA");
+            generate_code(-1, "CONJ");
         } |
     fator {$$ = $1;}
 ;
 
-operador:
-    MAIS            {$$ = 1;}  |
-    MENOS           {$$ = 2;}  |
-    MULTIPLICACAO   {$$ = 3;}  |
-    DIVISAO         {$$ = 4;}  |
+relacao:
     IGUAL           {$$ = 5;}  |
     DIFERENTE       {$$ = 6;}  |
     MENOR           {$$ = 7;}  |
     MAIOR           {$$ = 8;}  |
     MENOR_IGUAL     {$$ = 9;}  |
-    MAIOR_IGUAL     {$$ = 10;} |
-    AND             {$$ = 11;} |
-    OR              {$$ = 13;}            
+    MAIOR_IGUAL     {$$ = 10;}       
 ;
 
 fator:
@@ -335,7 +391,15 @@ fator:
             sprintf(str_aux, "CRCT 0");
             generate_code(-1, str_aux);
         } |
-    ABRE_PARENTESES expressao FECHA_PARENTESES {$$ = $2;}
+    ABRE_PARENTESES expressao FECHA_PARENTESES {$$ = $2;} |
+    NOT fator 
+        {
+            if ($2 != tipo_booleano)
+                trigger_error("invalid operation");
+
+            $$ = tipo_booleano;
+            generate_code(-1, "NEGA");
+        }
 ;
 
 
