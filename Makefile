@@ -19,7 +19,7 @@ lex.yy.c: compilador.l
 	flex compilador.l
 
 compilador.tab.c: compilador.y
-	bison compilador.y -d -v
+	bison -Wcounterexamples compilador.y -d -v
 
 compilador.o : compiladorF.c
 	gcc -g -c compiladorF.c -o compilador.o

@@ -1,23 +1,18 @@
 program exemplo75 (input, output);
-var m,n:  integer;
-    v, p: boolean;
+var i, j:  integer;
 begin
-    m := 3;
-    n := 39 + m;
-
-    if (m = 2) then
+    i := 0;
+    j := 10;
+    if i < 10 then
     begin
-        m := 32;
-        m := 32;
-        m := 32;
-        m := 32;
-        if (1 < 2) then
+        j := 39;
+        if j > 40 then
         begin
-            m := 2;
-        end;
+            j := 2;
+        end
+        else
+            i := 4;
     end
     else
-    begin
-        m := 2;
-    end;
+        j := 3;
 end.

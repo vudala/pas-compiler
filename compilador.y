@@ -29,6 +29,9 @@ extern Stack * Symbol_Table;
 %token MENOR_IGUAL MAIOR_IGUAL
 %token TRUE FALSE
 
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
+
 %%
 
 programa:
@@ -119,8 +122,8 @@ comando_composto:
 ;
 
 lista_comando:
-    lista_comando PONTO_E_VIRGULA comando |
-    comando
+    comando PONTO_E_VIRGULA lista_comando |
+    comando PONTO_E_VIRGULA
 ;
 
 comando: 
@@ -156,53 +159,53 @@ atribuicao:
     }
 ;
 
-comando_condicional:
-    IF ABRE_PARENTESES expressao FECHA_PARENTESES
-        {
-            if ($3 != tipo_booleano)
-                trigger_error("invalid expression on if evaluation");
+comando_condicional: 
+    if_then cond_else
+    { 
+        
+    }
+;
 
-            int rot = create_label();
-    
-            sprintf(str_aux, "DSVF R%d", rot);
-            generate_code(-1, str_aux);
-        }
+if_then: 
+    IF expressao 
+    {
+        if ($2 != tipo_booleano)
+            trigger_error("invalid expression on if evaluation");
+
+        int rot = create_label();
+
+        sprintf(str_aux, "DSVF R%d", rot);
+        generate_code(-1, str_aux);
+    }
     THEN comando
+;
+
+cond_else:
+    ELSE 
         {
             int rot1 = create_label();
             sprintf(str_aux, "DSVS R%d", rot1);
             generate_code(-1, str_aux);
 
-            Stack* rot2 = get_top_label();
-            int * value = (int*) rot2->prev->v;
+            Stack * rot = get_top_label();
+            int * value = (int*) rot->prev->v;
             generate_code(*value, "NADA");
         }
-    ELSE comando
-        {
-            Stack* rot = get_top_label();
-            int* value = (int*) rot->v;
-            generate_code(*value, "NADA");
-
-            destroy_labels(2);
-        } |
-        
-    IF ABRE_PARENTESES expressao FECHA_PARENTESES
-        {
-            if ($3 != tipo_booleano)
-                trigger_error("invalid expression on if evaluation");
-
-            int rot = create_label();
-            
-            sprintf(str_aux, "DSVF R%d", rot);
-            generate_code(-1, str_aux);
-        } 
-    THEN comando
+    comando
         {
             Stack * rot = get_top_label();
             int * value = (int*) rot->v;
             generate_code(*value, "NADA");
 
             destroy_labels(2);
+        } | 
+    %prec LOWER_THAN_ELSE
+        {
+            Stack * rot = get_top_label();
+            int * value = (int*) rot->v;
+            generate_code(*value, "NADA");
+
+            destroy_labels(1);
         }
 ;
 
