@@ -24,7 +24,7 @@ extern Stack * Symbol_Table;
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
 %token INTEIRO BOOLEANO NUMERO 
 %token MAIS MENOS MULTIPLICACAO DIVISAO 
-%token IF THEN ELSE
+%token IF THEN ELSE WHILE DO
 %token MENOR MAIOR IGUAL DIFERENTE AND OR NOT
 %token MENOR_IGUAL MAIOR_IGUAL
 %token TRUE FALSE
@@ -129,7 +129,8 @@ lista_comando:
 comando: 
     atribuicao |
     comando_condicional |
-    comando_composto
+    comando_composto |
+    comando_repetitivo
 ;
 
 atribuicao:
@@ -206,7 +207,33 @@ cond_else:
         }
 ;
 
-expressao: 
+comando_repetitivo:
+    WHILE
+        {
+            generate_code(create_label(), "NADA");
+        }
+    expressao
+        {
+            int rot = create_label();
+            sprintf(str_aux, "DSVF R%d", rot);
+            generate_code(-1, str_aux);
+        }
+    DO
+    comando
+        {
+            Stack * rot1 = get_top_label();
+            Stack * rot2 = rot1->prev;
+
+            sprintf(str_aux, "DSVS R%d", *((int*)rot2->v));
+            generate_code(-1, str_aux);
+
+            generate_code(*((int*) rot1->v), "NADA");
+
+            destroy_labels(2);
+        }
+;
+
+expressao:
     expressao_simples {$$ = $1;}
 ;
 

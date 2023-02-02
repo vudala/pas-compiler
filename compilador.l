@@ -169,6 +169,21 @@ else {
     return ELSE;
 }
 
+while {
+    simbolo = simb_while;
+    strncpy (Token, yytext, TAM_TOKEN);
+    printf("%s ", Token); fflush(stdout);
+    return WHILE;
+}
+
+do {
+    simbolo = simb_do;
+    strncpy (Token, yytext, TAM_TOKEN);
+    printf("%s ", Token); fflush(stdout);
+    return DO;
+}
+
+
 \< {
     simbolo = simb_menor;
     strncpy (Token, yytext, TAM_TOKEN);

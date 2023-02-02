@@ -1,18 +1,14 @@
 program exemplo75 (input, output);
 var i, j:  integer;
 begin
-    i := 0;
-    j := 10;
-    if i < 10 then
+    while 1 > 2 do
     begin
-        j := 39;
-        if j > 40 then
+        i := 3;
+        if (9 > (27 + 1)) then
         begin
-            j := 2;
-        end
-        else
-            i := 4;
-    end
-    else
-        j := 3;
+            j := 4;
+            while(39 + 4 > 3 + 7) do
+                i := 3;
+        end;
+    end;
 end.
