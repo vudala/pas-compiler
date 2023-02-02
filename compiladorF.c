@@ -10,33 +10,37 @@
  *  variáveis globais
  * ------------------------------------------------------------------- */
 
-int lc = 1;
+int Line_Counter = 1;
 Simbolos simbolo;
-char token[TAM_TOKEN];
-Stack * Tabela_Simbolos = NULL;
-int Rotulo = 1;
 
-Stack * Rotulos = NULL;
+char Token[TAM_TOKEN];
 
-FILE* fp=NULL;
+// tabela de simbolos
+Stack * Symbol_Table = NULL;
 
-void geraCodigo (char* rot, char* comando)
+// controle de rotulos
+int Label_Counter = 1;
+Stack * Labels = NULL;
+
+FILE* fp = NULL;
+
+void generate_code(int rot, char* comando)
 {
     if (fp == NULL)
         fp = fopen ("MEPA", "w");
 
-    if ( rot == NULL ) {
+    if (rot == -1) {
         fprintf(fp, "     %s\n", comando); fflush(fp);
     }
     else {
-        fprintf(fp, "%s: %s \n", rot, comando); fflush(fp);
+        fprintf(fp, "R%d: %s \n", rot, comando); fflush(fp);
     }
 }
 
 
 void trigger_error (char* erro)
 {
-    fprintf (stderr, "Erro na linha %d - %s\n", lc, erro);
+    fprintf (stderr, "Error at line %d - %s\n", Line_Counter, erro);
     exit(-1);
 }
 
@@ -52,7 +56,7 @@ void must_alloc(const void * ptr, const char * msg)
 
 void print_tabela_simbolos()
 {
-    Stack * el = Tabela_Simbolos;
+    Stack * el = Symbol_Table;
     while(el != NULL) {
         Entry * en = (Entry *) el->v;
         
@@ -70,15 +74,16 @@ void push_symbol(int category)
     Entry * ne = malloc(sizeof(Entry));
     must_alloc(ne, "malloc");
 
-    ne->identifier = malloc(strlen(token));
+    ne->identifier = malloc(strlen(Token));
     must_alloc(ne->identifier, "malloc");
-    strcpy(ne->identifier, token);
+    strcpy(ne->identifier, Token);
+
     ne->addr.nl = nivel_lexico;
     ne->addr.offset = offset;
 
     ne->category = category;
 
-    Stack* el = Tabela_Simbolos;
+    Stack* el = Symbol_Table;
     while(el != NULL){
         Entry* entry = (Entry*) el->v;
 
@@ -106,7 +111,7 @@ void push_symbol(int category)
         void;
     }
 
-    push(&Tabela_Simbolos, ne);
+    push(&Symbol_Table, ne);
 }
 
 
@@ -124,15 +129,16 @@ int get_type_enum(char * type)
 
     if (!strcmp(type, "boolean")) return tipo_booleano;
 
-    trigger_error("tipo inexistente\n");
+    trigger_error("tipo inexistente");
 
     return tipo_indefinido;
 }
 
 
+// retorna um registro da tabela de simbolos correspondente ao identificador
 Entry * get_entry(char * identifier)
 {
-    Stack * el = Tabela_Simbolos;
+    Stack * el = Symbol_Table;
     Entry * en = (Entry*) el->v;
 
     while (el && en) {
@@ -151,7 +157,7 @@ Entry * get_entry(char * identifier)
 // atualiza os tipos das variaveis simples recem declaradas
 void update_types(char * type)
 {
-    Stack * el = Tabela_Simbolos;
+    Stack * el = Symbol_Table;
     Entry * en = (Entry *) el->v;
     VariavelSimples * vs = NULL;
  
@@ -169,62 +175,70 @@ void update_types(char * type)
     }
 }
 
-void print_operand_code(int operand){
+
+// gera o codigo mepa correspondente ao codigo do operando
+void print_operation_code(int operand){
     switch(operand) {
         case 1:
-            geraCodigo(NULL, "SOMA");
+            generate_code(-1, "SOMA");
             break;
         case 2:
-            geraCodigo(NULL, "SUBT");
+            generate_code(-1, "SUBT");
             break;
         case 3:
-            geraCodigo(NULL, "MULT");
+            generate_code(-1, "MULT");
             break;
         case 4:
-            geraCodigo(NULL, "DIVI");
+            generate_code(-1, "DIVI");
             break;
         case 5:
-            geraCodigo(NULL, "CMIG");
+            generate_code(-1, "CMIG");
             break;
         case 6:
-            geraCodigo(NULL, "CMDG");
+            generate_code(-1, "CMDG");
             break;
         case 7:
-            geraCodigo(NULL, "CMME");
+            generate_code(-1, "CMME");
             break;
         case 8:
-            geraCodigo(NULL, "CMMA");
+            generate_code(-1, "CMMA");
             break;
         case 9:
-            geraCodigo(NULL, "CMEG");
+            generate_code(-1, "CMEG");
             break;
         case 10:
-            geraCodigo(NULL, "CMAG");
+            generate_code(-1, "CMAG");
             break;
         case 11:
-            geraCodigo(NULL, "CONJ");
+            generate_code(-1, "CONJ");
             break;
         case 12:
-            geraCodigo(NULL, "DISJ");
+            generate_code(-1, "DISJ");
             break;
         default:
             trigger_error("unknown op code");
     }
 }
 
-int check_valid_int_operation(int operand){
+
+int check_valid_int_operation(int operand)
+{
     if (1 <= operand  && operand <= 11)
         return 1;
     return 0;
 }
 
-int check_valid_bool_operation(int operand){
+
+int check_valid_bool_operation(int operand)
+{
     if (12 <= operand && operand <= 13 || 5 <= operand  && operand <= 6)
         return 1;
     return 0;
 }
 
-int resolve_operation_return(int op1, int op2, int operand){
+
+int resolve_operation_return(int op1, int op2, int operand)
+{
     if (5 <= operand && operand <= 10 && op1 == tipo_inteiro && op2 == tipo_inteiro)
         return tipo_booleano;
 
@@ -239,16 +253,37 @@ int resolve_operation_return(int op1, int op2, int operand){
     return tipo_indefinido;
 }
 
-int create_rotulo(){
+
+int create_label()
+{
     int * rot = malloc(sizeof(int));
     must_alloc(rot, __func__);
-    *rot = Rotulo++;
-    push(&Rotulos, (void*) rot);
+
+    *rot = Label_Counter++;
+
+    printf("%p create %d\n", Labels, *rot); fflush(stdout);
+    push(&Labels, (void*) rot);
+
+    printf("created at %p\n", Labels);
     
     return *rot;
 }
 
-Stack* get_top_rotulo(){
-    return Rotulos;
+
+Stack * get_top_label()
+{
+    return top(&Labels);
 }
 
+
+// destroy n rotulos da pilha
+void destroy_labels(unsigned int n)
+{
+    printf("top was %p\n", Labels); fflush(stdout);
+        while(Labels && n--) {
+            printf("destroying %p\n", Labels); fflush(stdout);
+            pop(&Labels);
+            printf("destroyed, next in line: %p\n", Labels);
+        }
+    printf("top is %p\n", Labels); fflush(stdout);
+}

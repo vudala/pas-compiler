@@ -14,8 +14,7 @@
 
 int num_vars_declaradas, nivel_lexico = -1, offset;
 char str_aux[100], atrib_aux[100];
-extern Stack * Tabela_Simbolos;
-extern Stack * Pilha_Tipos;
+extern Stack * Symbol_Table;
 
 
 %}
@@ -28,18 +27,16 @@ extern Stack * Pilha_Tipos;
 %token IF THEN ELSE
 %token MENOR MAIOR IGUAL DIFERENTE AND OR NOT
 %token MENOR_IGUAL MAIOR_IGUAL
+%token TRUE FALSE
 
 %%
 
 programa:
-    {geraCodigo (NULL, "INPP");}
+    {generate_code(-1, "INPP");}
     PROGRAM IDENT
     ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
     bloco PONTO
-    {
-        geraCodigo (NULL, "PARA");
-        destroy(&Tabela_Simbolos, entry_destroy);
-    }
+    {generate_code(-1, "PARA");}
 ;
 
 
@@ -53,21 +50,21 @@ bloco:
 
         print_tabela_simbolos();
         
-        geraCodigo (NULL, str_aux);
+        generate_code(-1, str_aux);
     }
 ;
 
 
 ///////////// DECLARACAO DE VARIAVEIS
 var:   
-    { 
+    {
         num_vars_declaradas = 0;
         offset = 0;
     }
     VAR declara_vars
     {
         sprintf(str_aux, "AMEM %i", num_vars_declaradas);
-        geraCodigo (NULL, str_aux);
+        generate_code(-1, str_aux);
     }
 ;
 
@@ -83,7 +80,7 @@ declara_var:
     tipo
     {
         // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
-        update_types(token);
+        update_types(Token);
     }
     PONTO_E_VIRGULA
 ;
@@ -131,7 +128,7 @@ comando:
 ;
 
 atribuicao:
-    variavel {strcpy(atrib_aux, token);} ATRIBUICAO expressao
+    variavel {strcpy(atrib_aux, Token);} ATRIBUICAO expressao
     {
         // armazenar valor da expressao que foi calculada
         Entry * en = get_entry(atrib_aux);
@@ -149,7 +146,7 @@ atribuicao:
 
             sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
         
-            geraCodigo(NULL, str_aux);
+            generate_code(-1, str_aux);
         }
         else if (en->category == cate_pf) {
             // do something
@@ -159,53 +156,53 @@ atribuicao:
 
 comando_condicional:
     IF ABRE_PARENTESES expressao FECHA_PARENTESES
-    {
-        int rot = create_rotulo();
- 
-        sprintf(str_aux, "DSVF R%d", rot);
-        geraCodigo(NULL, str_aux);
-    }
+        {
+            int rot = create_label();
+    
+            sprintf(str_aux, "DSVF R%d", rot);
+            generate_code(-1, str_aux);
+        }
     THEN T_BEGIN comandos T_END
-    {
-        int rot = create_rotulo();
-        sprintf(str_aux, "DSVS R%d", rot);
-        geraCodigo(NULL, str_aux);
+        {
+            int rot1 = create_label();
+            sprintf(str_aux, "DSVS R%d", rot1);
+            generate_code(-1, str_aux);
 
-        Stack* rot2 = get_top_rotulo();
-        int* value = (int*) rot2->prev->v;
-        sprintf(str_aux, "R%d", *value);
-        geraCodigo(str_aux, "NADA");
-    }
+            Stack* rot2 = get_top_label();
+            int * value = (int*) rot2->prev->v;
+            generate_code(*value, "NADA");
+        }
     ELSE T_BEGIN comandos T_END
-    {
-        if ($3 != tipo_booleano) {
-            trigger_error("invalid type for if");
-        }
+        {
+            if ($3 != tipo_booleano) {
+                trigger_error("invalid type for if");
+            }
 
-        Stack* rot = get_top_rotulo();
-        int* value = (int*) rot->v;
-        sprintf(str_aux, "R%d", *value);
-        geraCodigo(str_aux, "NADA");
-    } |
+            Stack* rot = get_top_label();
+            int* value = (int*) rot->v;
+            generate_code(*value, "NADA");
 
-    IF ABRE_PARENTESES expressao FECHA_PARENTESES
-    {
-        int rot = create_rotulo();
+            destroy_labels(2);
+        } |
         
-        sprintf(str_aux, "DSVF R%d", rot);
-        geraCodigo(NULL, str_aux);
-    } 
+    IF ABRE_PARENTESES expressao FECHA_PARENTESES
+        {
+            int rot = create_label();
+            
+            sprintf(str_aux, "DSVF R%d", rot);
+            generate_code(-1, str_aux);
+        } 
     THEN T_BEGIN comandos T_END
-    {
-        if ($3 != tipo_booleano) {
-            trigger_error("invalid type for if");
-        }
+        {
+            if ($3 != tipo_booleano)
+                trigger_error("invalid type for if");
 
-        Stack* rot = get_top_rotulo();
-        int* value = (int*) rot->v;
-        sprintf(str_aux, "R%d", *value);
-        geraCodigo(str_aux, "NADA");
-    }
+            Stack * rot = get_top_label();
+            int * value = (int*) rot->v;
+            generate_code(*value, "NADA");
+
+            destroy_labels(2);
+        }
 ;
 
 expressao: 
@@ -217,47 +214,47 @@ relacao:
 ;
 
 expressao_simples:
-    fator operando expressao_simples
+    fator operador expressao_simples
         {
-            if ($1 != $3) {
+            if ($1 != $3)
                 trigger_error("type mismatch");
-            }
-            if ($1 == tipo_inteiro && !check_valid_int_operation($2)) {
+
+            if ($1 == tipo_inteiro && !check_valid_int_operation($2))
                 trigger_error("invalid operation for int");
-            }
-            if($1 == tipo_booleano && !check_valid_bool_operation($2)) {
+
+            if($1 == tipo_booleano && !check_valid_bool_operation($2))
                 trigger_error("invalid operation for bool");
-            } 
+
             $$ = resolve_operation_return($1, $3, $2);
-            print_operand_code($2);
+            print_operation_code($2);
         } |
     MAIS fator 
         {
-            if ($2 != tipo_inteiro) {
+            if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
-            }
+
             $$ = tipo_inteiro;
         } |
     MENOS fator 
         {
-            if ($2 != tipo_inteiro) {
+            if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
-            }
+
             $$ = tipo_inteiro;
-            geraCodigo(NULL, "INVR");
+            generate_code(-1, "INVR");
         } |
     NOT fator 
         {
-            if ($2 != tipo_inteiro) {
+            if ($2 != tipo_booleano)
                 trigger_error("invalid operation");
-            }
+
             $$ = tipo_booleano;
-            geraCodigo(NULL, "NEGA");
+            generate_code(-1, "NEGA");
         } |
     fator {$$ = $1;}
 ;
 
-operando:
+operador:
     MAIS {$$ = 1;}           |
     MENOS {$$ = 2;}          |
     MULTIPLICACAO {$$ = 3;}  |
@@ -270,18 +267,16 @@ operando:
     MAIOR_IGUAL {$$ = 10;}   |
     AND {$$ = 11;}           |
     OR {$$ = 13;}            
-
 ;
 
 fator:
     variavel
         {
             // procurar o simbolo na tabela e empilhar o valor
-            Entry * en = get_entry(token);
+            Entry * en = get_entry(Token);
 
-            if (!en) {
+            if (!en)
                 trigger_error("unknown variable");
-            }
 
             if (en->category == cate_vs) {
                 VariavelSimples * vs = en->element;
@@ -289,7 +284,7 @@ fator:
                 $$ = vs->type;
                 sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
             
-                geraCodigo(NULL, str_aux);
+                generate_code(-1, str_aux);
             }
             else if (en->category == cate_pf) {
                 // do something
@@ -301,17 +296,27 @@ fator:
     NUMERO 
         {
             $$ = tipo_inteiro;
-            sprintf(str_aux, "CRCT %s", token);
-            
-            geraCodigo(NULL, str_aux);
+            sprintf(str_aux, "CRCT %s", Token);
+            generate_code(-1, str_aux);
+        } |
+    TRUE 
+        {
+            $$ = tipo_booleano;
+            sprintf(str_aux, "CRCT 1");
+            generate_code(-1, str_aux);
+        } |
+    FALSE 
+        {
+            $$ = tipo_booleano;
+            sprintf(str_aux, "CRCT 0");
+            generate_code(-1, str_aux);
         } |
     ABRE_PARENTESES expressao FECHA_PARENTESES
 ;
 
-chamada_funcao:
-;
 
-variavel: IDENT
+variavel:
+    IDENT
 ;
 
 
@@ -334,6 +339,8 @@ int main (int argc, char** argv) {
 
     yyin=fp;
     yyparse();
+
+    destroy(&Symbol_Table, entry_destroy);
 
     return 0;
 }

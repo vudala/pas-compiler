@@ -2,8 +2,8 @@
 #define STACK_INCLUDED
 
 typedef struct stack_el {
-    void * v;
     struct stack_el *prev, *next;
+    void * v;
 } Stack;
 
 void destroy(Stack ** base, void (*destroyer)(void *));
@@ -12,12 +12,8 @@ void push(Stack ** base, void * v);
 
 void * pop(Stack ** base);
 
-void * top(Stack ** base);
+void pop_n(Stack ** base, unsigned int n);
 
-void pop_n(Stack ** base, int n);
-
-int create_rotulo();
-
-Stack* get_top_rotulo();
+Stack * top(Stack ** base);
 
 #endif

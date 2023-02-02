@@ -1,3 +1,8 @@
+#ifndef COMPILADOR_INCLUDED
+#define COMPILADOR_INCLUDED
+
+#include "stack.h"
+
 #define TAM_TOKEN 16
 
 typedef enum simbolos {
@@ -9,22 +14,23 @@ typedef enum simbolos {
     simb_mais, simb_menos, simb_multiplicacao, simb_divisao,
     simb_if, simb_then, simb_else,
     simb_menor, simb_maior, simb_menor_igual, simb_maior_igual,
-    simb_igual, simb_diferente, simb_and, simb_not, simb_or
+    simb_igual, simb_diferente, simb_and, simb_not, simb_or,
+    simb_true, simb_false
 } Simbolos; 
 
 
-typedef enum tipo {
+typedef enum type {
     tipo_indefinido = 0,
     tipo_inteiro,
     tipo_booleano
-} Tipo;
+} Type;
 
 /* -------------------------------------------------------------------
  * variáveis globais
  * ------------------------------------------------------------------- */
 
 extern Simbolos simbolo;
-extern char token[TAM_TOKEN];
+extern char Token[TAM_TOKEN];
 extern int nivel_lexico;
 extern int offset;
 
@@ -33,13 +39,12 @@ typedef struct mepa_addr {
 } MEPA_Address;
 
 typedef struct variavel_simples {
-	Tipo type;
+	Type type;
 } VariavelSimples;
 
 
 typedef struct parametro_formal {
-    MEPA_Address address;
-	Tipo type;
+	Type type;
     int ref;                // 0 -> valor, != 0 -> referencia
 } ParametroFormal;
 
@@ -55,8 +60,10 @@ typedef struct entry_t {
     } category;
 } Entry;
 
-void geraCodigo (char*, char*);
+void generate_code(int label_n, char * command);
+
 int yylex();
+
 void yyerror(const char *s);
 
 void push_symbol(int category);
@@ -69,12 +76,20 @@ void trigger_error (char* erro);
 
 Entry * get_entry(char * identifier);
 
-void print_operand_code(int operand);
+void print_operation_code(int opcode);
 
 int check_valid_int_operation(int operand);
 
 int check_valid_bool_operation(int operand);
 
-int resolve_operation_return(int op1, int op2, int operand);
+int resolve_operation_return(int op1, int op2, int operator);
 
 void print_tabela_simbolos();
+
+void destroy_labels(unsigned int n);
+
+int create_label();
+
+Stack * get_top_label();
+
+#endif

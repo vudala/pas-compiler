@@ -21,6 +21,11 @@ void push(Stack ** base, void * v)
         return;
    
     Stack * elem = malloc(sizeof(Stack));
+    if (!elem) {
+        perror("malloc");
+        exit(-1);
+    }
+
     elem->v = v;
     elem->next = NULL;
 
@@ -28,9 +33,11 @@ void push(Stack ** base, void * v)
         elem->prev = NULL;
     }
     else {
-        elem->prev = *base;
-        (*base)->next = elem;
+        Stack * top_el = *base;
+        elem->prev = top_el;
+        top_el->next = elem;
     }
+    
     *base = elem;
 }
 
@@ -50,17 +57,24 @@ void * pop(Stack ** base)
 }
 
 
-void * top(Stack ** base)
+void pop_n(Stack ** base, unsigned int n)
 {
-    if (base == NULL || *base == NULL)
-        return NULL;
-
-    return (*base)->v;
+    if (base)
+        while(*base && n--)
+            pop(base);
 }
 
 
-void pop_n(Stack ** base, int n)
+Stack * top(Stack ** base)
 {
-    while(base && n--)
-        pop(base);
+    if (base == NULL || *base == NULL)
+        return NULL;
+    
+    Stack * top_el = NULL;
+    Stack * el = *base;
+    while(el != NULL) {
+        top_el = el;
+        el = el->next;
+    }
+    return top_el;
 }
