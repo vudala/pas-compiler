@@ -28,6 +28,7 @@ extern Stack * Symbol_Table;
 %token MENOR MAIOR IGUAL DIFERENTE AND OR NOT
 %token MENOR_IGUAL MAIOR_IGUAL
 %token TRUE FALSE
+%token PROCEDURE
 
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
@@ -45,7 +46,8 @@ programa:
 
 bloco:
     {nivel_lexico += 1;}
-    declaracao_variaveis
+    parte_declara_vars
+    parte_declara_subrotinas
     comando_composto
     {
         nivel_lexico -= 1;
@@ -57,9 +59,14 @@ bloco:
     }
 ;
 
+tipo:
+    INTEIRO | BOOLEANO
+;
 
 ///////////// DECLARACAO DE VARIAVEIS
-declaracao_variaveis:   
+parte_declara_vars:   
+    parte_declara_vars declara_vars
+    |
     {
         num_vars_declaradas = 0;
         offset = 0;
@@ -68,19 +75,11 @@ declaracao_variaveis:
     {
         sprintf(str_aux, "AMEM %i", num_vars_declaradas);
         generate_code(-1, str_aux);
-    }
+    } |
 ;
-
 
 declara_vars:
-    declara_vars declara_var |
-    declara_var
-;
-
-
-declara_var:
-    lista_id_var DOIS_PONTOS
-    tipo
+    lista_id_var DOIS_PONTOS tipo
     {
         // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
         update_types(Token);
@@ -88,11 +87,6 @@ declara_var:
     PONTO_E_VIRGULA
 ;
 /////////////
-
-
-tipo:
-    INTEIRO | BOOLEANO
-;
 
 lista_id_var:   
     lista_id_var VIRGULA IDENT
@@ -111,12 +105,36 @@ lista_id_var:
     }
 ;
 
-
 lista_idents:
     lista_idents VIRGULA IDENT |
     IDENT
 ;
 
+parte_declara_subrotinas: 
+    parte_declara_subrotinas declara_proced |
+;
+
+declara_proced: 
+    PROCEDURE IDENT param_formais PONTO_E_VIRGULA bloco |
+    PROCEDURE IDENT PONTO_E_VIRGULA bloco
+;
+
+param_formais: 
+    ABRE_PARENTESES parte_param_formais FECHA_PARENTESES
+;
+
+parte_param_formais: 
+    parte_param_formais PONTO_E_VIRGULA sec_param_formais |
+    sec_param_formais
+;
+
+sec_param_formais:
+    VAR lista_idents DOIS_PONTOS IDENT |
+    lista_idents DOIS_PONTOS IDENT |
+    PROCEDURE lista_idents
+;
+
+//! ISTO ESTA ERRADO ? -> ou transformamos o interno em outra regra msm?
 comando_composto: 
     T_BEGIN lista_comando T_END
 ;
@@ -128,13 +146,14 @@ lista_comando:
 
 comando: 
     atribuicao |
-    comando_condicional |
+    // chamada_procedimento |
     comando_composto |
+    comando_condicional |
     comando_repetitivo
 ;
 
 atribuicao:
-    variavel {strcpy(atrib_aux, Token);} ATRIBUICAO expressao
+    IDENT {strcpy(atrib_aux, Token);} ATRIBUICAO expressao
     {
         // armazenar valor da expressao que foi calculada
         Entry * en = get_entry(atrib_aux);
@@ -158,6 +177,11 @@ atribuicao:
             // do something
         }
     }
+;
+
+chamada_procedimento: 
+    IDENT ABRE_PARENTESES lista_express FECHA_PARENTESES |
+    IDENT
 ;
 
 comando_condicional: 
@@ -233,6 +257,11 @@ comando_repetitivo:
         }
 ;
 
+lista_express: 
+    lista_express VIRGULA expressao |
+    expressao
+;
+
 expressao:
     expressao_simples relacao expressao_simples
         {
@@ -249,6 +278,15 @@ expressao:
             print_operation_code($2);
         } |
     expressao_simples {$$ = $1;}
+;
+
+relacao:
+    IGUAL           {$$ = 5;}  |
+    DIFERENTE       {$$ = 6;}  |
+    MENOR           {$$ = 7;}  |
+    MAIOR           {$$ = 8;}  |
+    MENOR_IGUAL     {$$ = 9;}  |
+    MAIOR_IGUAL     {$$ = 10;}       
 ;
 
 expressao_simples:
@@ -340,15 +378,6 @@ termo:
     fator {$$ = $1;}
 ;
 
-relacao:
-    IGUAL           {$$ = 5;}  |
-    DIFERENTE       {$$ = 6;}  |
-    MENOR           {$$ = 7;}  |
-    MAIOR           {$$ = 8;}  |
-    MENOR_IGUAL     {$$ = 9;}  |
-    MAIOR_IGUAL     {$$ = 10;}       
-;
-
 fator:
     variavel
         {
@@ -401,7 +430,6 @@ fator:
             generate_code(-1, "NEGA");
         }
 ;
-
 
 variavel:
     IDENT

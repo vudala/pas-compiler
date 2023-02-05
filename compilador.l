@@ -261,6 +261,13 @@ false {
     return FALSE;
 }
 
+procedure {
+    simbolo = simb_procedure;
+    strncpy (Token, yytext, TAM_TOKEN);
+    printf("%s ", Token); fflush(stdout);
+    return PROCEDURE;
+}
+
 {numero} {
     simbolo = simb_numero;
     strncpy (Token, yytext, TAM_TOKEN);
