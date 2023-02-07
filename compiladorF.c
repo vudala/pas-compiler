@@ -63,7 +63,15 @@ void print_tabela_simbolos()
         if (en->category == cate_vs) {
             VariavelSimples * vs = (VariavelSimples *) en->element;
             printf("VS %s tipo %d %d %d\n", en->identifier, vs->type, en->addr.nl, en->addr.offset);
-        }   
+        }
+        else if (en->category == cate_proc) {
+            Procedimento * p = (Procedimento *) en->element;
+            printf("P %s %d\n", en->identifier, en->addr.nl);
+        }
+        else if (en->category == cate_pf) {
+            ParametroFormal * pf = (ParametroFormal *) en->element;
+            printf("PF %s tipo %d\n", en->identifier, pf->type);
+        }
         el = el->prev;
     }
 }
@@ -98,17 +106,27 @@ void push_symbol(int category)
 
     if (category == cate_vs) {
         VariavelSimples * vs = malloc(sizeof(VariavelSimples));
-        must_alloc(vs, "malloc");
+        must_alloc(vs, __func__);
 
         vs->type = tipo_indefinido;
 
         ne->element = (void*) vs;
     }
     else if (category == cate_proc) {
-        void;
+        Procedimento * p = malloc(sizeof(Procedimento));
+        must_alloc(p, __func__);
+
+        p->n_rotulo = *((int*) get_top_label()->v);
+
+        ne->addr.offset = -1;
+
+        ne->element = (void*) p;
     }
     else if (category == cate_pf) {
-        void;
+        ParametroFormal * pf = malloc(sizeof(ParametroFormal));
+        must_alloc(pf, __func__);
+        pf->type = tipo_indefinido;
+        ne->element = (void*) pf;
     }
 
     push(&Symbol_Table, ne);
@@ -155,19 +173,24 @@ Entry * get_entry(char * identifier)
 
 
 // atualiza os tipos das variaveis simples recem declaradas
-void update_types(char * type)
+void update_types(int cate, int ref, char * type)
 {
     Stack * el = Symbol_Table;
     Entry * en = (Entry *) el->v;
     VariavelSimples * vs = NULL;
  
-    while(el && en && en->category == cate_vs) {
+    while(el && en && (en->category == cate)) {
         vs = (VariavelSimples*) en->element;
 
         if (nivel_lexico != en->addr.nl || vs->type != tipo_indefinido)
             return;
 
         vs->type = get_type_enum(type);
+
+        if (cate == cate_pf) {
+            ParametroFormal * pf = (ParametroFormal *) en->element;
+            pf->ref = ref;
+        }
 
         el = el->prev;
         if (el)
@@ -277,4 +300,68 @@ Stack * get_top_label()
 void destroy_labels(unsigned int n)
 {
     pop_n(&Labels, n);
+}
+
+
+void destroy_block_entries(int nl)
+{
+    if (!Symbol_Table)
+        return;
+
+    Entry * en = (Entry *) Symbol_Table->v;
+    while (en && en->addr.nl == nl) {
+        pop(&Symbol_Table);
+        if (Symbol_Table)
+            en = (Entry *) Symbol_Table->v;
+        else
+            return;
+    }
+}
+
+
+Procedimento * get_top_procedure()
+{
+    Stack * el = Symbol_Table;
+    if (!el)
+        return NULL;
+
+    Entry * en = (Entry *) el->v;
+    while(el && en && en->category != cate_proc) {
+        en = (Entry *) el->v;
+        el = el->prev;
+    }
+
+    if (en)
+        return (Procedimento *) en->element;
+
+    return NULL;
+}
+
+
+void update_proc_params()
+{
+    Procedimento * p = get_top_procedure();
+    if (!p)
+        trigger_error("no procedure to update");
+
+    p->params = malloc(sizeof(ParametroFormal) * p->n_params);
+    must_alloc(p->params, __func__);
+
+    Stack * el = Symbol_Table;
+    Entry * en = (Entry *) el->v;
+    ParametroFormal * pf = NULL;
+
+    int i = p->n_params;
+    while(en && i--) {
+        pf = (ParametroFormal *) en->element;
+        if (!pf)
+            trigger_error("unknwon param");
+        
+        memcpy(&(p->params[i]), pf, sizeof(ParametroFormal));
+
+        en = (Entry *) el->prev;
+    }
+
+    if (i != -1)
+        trigger_error("unable to fill all params of procedure");
 }

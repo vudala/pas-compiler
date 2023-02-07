@@ -42,17 +42,22 @@ typedef struct variavel_simples {
 	Type type;
 } VariavelSimples;
 
-
 typedef struct parametro_formal {
-	Type type;
-    int ref;                // 0 -> valor, != 0 -> referencia
+	Type type;             
+    int ref;
 } ParametroFormal;
+
+typedef struct procedimento {
+    int n_rotulo;
+    int n_params;
+    ParametroFormal * params;
+} Procedimento;
 
 
 typedef struct entry_t {
     char * identifier;  // identificador
     void * element;     // valor
-    MEPA_Address addr;        // endereço na memória
+    MEPA_Address addr;  // endereço na memória
     enum {
         cate_vs = 0,    // variavel simples
         cate_proc,      // procedimento
@@ -70,7 +75,7 @@ void push_symbol(int category);
 
 void entry_destroy(void * ptr);
 
-void update_types(char * type);
+void update_types(int cate, int ref, char * type);
 
 void trigger_error (char* erro);
 
@@ -91,5 +96,13 @@ void destroy_labels(unsigned int n);
 int create_label();
 
 Stack * get_top_label();
+
+void destroy_block_entries(int nl);
+
+void must_alloc(const void * ptr, const char * msg);
+
+Procedimento * get_top_procedure();
+
+void update_proc_params();
 
 #endif

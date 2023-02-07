@@ -15,6 +15,8 @@
 int num_vars_declaradas, nivel_lexico = -1, offset;
 char str_aux[100], atrib_aux[100];
 extern Stack * Symbol_Table;
+int trigger = 1, trigger2 = 1;
+Stack * DMEM_Stack = NULL;
 
 
 %}
@@ -48,13 +50,19 @@ bloco:
     {nivel_lexico += 1;}
     parte_declara_vars
     parte_declara_subrotinas
+    {
+        if (trigger) {
+            trigger = 0;
+            generate_code(0, "NADA");
+        }
+    }
     comando_composto
     {
-        nivel_lexico -= 1;
-        sprintf(str_aux, "DMEM %i", num_vars_declaradas);
+        sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
 
-        print_tabela_simbolos();
-        
+        destroy_block_entries(nivel_lexico);
+
+        nivel_lexico -= 1;
         generate_code(-1, str_aux);
     }
 ;
@@ -75,6 +83,12 @@ parte_declara_vars:
     {
         sprintf(str_aux, "AMEM %i", num_vars_declaradas);
         generate_code(-1, str_aux);
+
+    	int * n = malloc(sizeof(int));
+        must_alloc(n, "parte_declara_vars");
+        *n = num_vars_declaradas;
+
+        push(&DMEM_Stack, n);
     } |
 ;
 
@@ -82,7 +96,7 @@ declara_vars:
     lista_id_var DOIS_PONTOS tipo
     {
         // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
-        update_types(Token);
+        update_types(cate_vs, 0, Token);
     }
     PONTO_E_VIRGULA
 ;
@@ -90,7 +104,7 @@ declara_vars:
 
 lista_id_var:   
     lista_id_var VIRGULA IDENT
-    { 
+    {
         push_symbol(cate_vs);
         
         num_vars_declaradas += 1;
@@ -110,29 +124,86 @@ lista_idents:
     IDENT
 ;
 
-parte_declara_subrotinas: 
-    parte_declara_subrotinas declara_proced |
+parte_declara_subrotinas:
+    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA |
 ;
 
-declara_proced: 
-    PROCEDURE IDENT param_formais PONTO_E_VIRGULA bloco |
-    PROCEDURE IDENT PONTO_E_VIRGULA bloco
+declara_proced:
+    PROCEDURE IDENT
+        {
+            trigger = 0;
+            if (trigger2) {
+                trigger2 = 0;
+                generate_code(-1, "DSVS R0");
+            }
+
+            sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
+
+            int rot = create_label();
+            generate_code(rot, str_aux);
+
+            push_symbol(cate_proc);
+        }
+    declara_proc_complemento
 ;
+
+declara_proc_complemento:
+    param_formais PONTO_E_VIRGULA bloco |
+    PONTO_E_VIRGULA bloco
+        {
+            sprintf(str_aux, "RTPR %d, %d", nivel_lexico + 1, 0);
+
+            generate_code(-1, str_aux);
+        }
+;
+
 
 param_formais: 
     ABRE_PARENTESES parte_param_formais FECHA_PARENTESES
+    {
+        update_proc_params();
+    }
 ;
 
-parte_param_formais: 
+parte_param_formais:
     parte_param_formais PONTO_E_VIRGULA sec_param_formais |
-    sec_param_formais
+    sec_param_formais |
 ;
 
 sec_param_formais:
-    VAR lista_idents DOIS_PONTOS IDENT |
-    lista_idents DOIS_PONTOS IDENT |
-    PROCEDURE lista_idents
+    VAR lista_ident_params DOIS_PONTOS tipo
+        {
+            update_types(cate_pf, 1, Token);
+        } |
+    lista_ident_params DOIS_PONTOS tipo
+        {
+            update_types(cate_pf, 0, Token);
+        }
 ;
+
+lista_ident_params :
+    lista_ident_params VIRGULA IDENT
+        {
+            Procedimento * p = get_top_procedure();
+            if (!p)
+                trigger_error("no procedure");
+
+            p->n_params += 1;
+
+            push_symbol(cate_pf);
+        } |
+    IDENT
+        {
+            Procedimento * p = get_top_procedure();
+            if (!p)
+                trigger_error("no procedure");
+
+            p->n_params += 1;
+
+            push_symbol(cate_pf);
+        }
+;
+
 
 //! ISTO ESTA ERRADO ? -> ou transformamos o interno em outra regra msm?
 comando_composto: 
@@ -141,20 +212,23 @@ comando_composto:
 
 lista_comando:
     comando PONTO_E_VIRGULA lista_comando |
-    comando PONTO_E_VIRGULA
+    comando
 ;
 
 comando: 
-    atribuicao |
-    // chamada_procedimento |
+    linha_comando |
     comando_composto |
     comando_condicional |
     comando_repetitivo
 ;
 
-atribuicao:
-    IDENT {strcpy(atrib_aux, Token);} ATRIBUICAO expressao
-    {
+linha_comando:
+    IDENT {strcpy(atrib_aux, Token);} complemento_linha 
+;
+
+complemento_linha:
+    ATRIBUICAO expressao
+        {
         // armazenar valor da expressao que foi calculada
         Entry * en = get_entry(atrib_aux);
 
@@ -165,7 +239,7 @@ atribuicao:
         if (en->category == cate_vs) {
             VariavelSimples * vs = en->element;
 
-            if (vs->type != $4) {
+            if (vs->type != $2) {
                 trigger_error("type mismatch");
             }
 
@@ -175,13 +249,35 @@ atribuicao:
         }
         else if (en->category == cate_pf) {
             // do something
-        }
-    }
-;
+            ParametroFormal * pf = (ParametroFormal *) en->element;
 
-chamada_procedimento: 
-    IDENT ABRE_PARENTESES lista_express FECHA_PARENTESES |
-    IDENT
+            if (pf->type != $2) {
+                trigger_error("type mismatch");
+            }
+
+            // mudar esse baraio
+            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+        
+            generate_code(-1, str_aux);
+        }
+        else {
+            trigger_error("you can only assign values to variables");
+        }
+    } |
+    // chamada de procedimentos com parametros
+    ABRE_PARENTESES lista_express FECHA_PARENTESES |
+    // chamada de procedimento sem parametros
+    {
+        Entry * en = get_entry(atrib_aux);
+        
+        if (!en)
+            trigger_error("unknown procedure");
+
+        Procedimento * proc = (Procedimento *) en->element;
+
+        sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
+        generate_code(-1, str_aux);
+    }
 ;
 
 comando_condicional: 
@@ -259,7 +355,7 @@ comando_repetitivo:
 
 lista_express: 
     lista_express VIRGULA expressao |
-    expressao
+    expressao |
 ;
 
 expressao:
@@ -379,7 +475,7 @@ termo:
 ;
 
 fator:
-    variavel
+    IDENT
         {
             // procurar o simbolo na tabela e empilhar o valor
             Entry * en = get_entry(Token);
@@ -388,7 +484,7 @@ fator:
                 trigger_error("unknown variable");
 
             if (en->category == cate_vs) {
-                VariavelSimples * vs = en->element;
+                VariavelSimples * vs = (VariavelSimples*) en->element;
 
                 $$ = vs->type;
                 sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
@@ -396,7 +492,13 @@ fator:
                 generate_code(-1, str_aux);
             }
             else if (en->category == cate_pf) {
-                // do something
+                // ISSO AQUI AINDA TEM QUE MUDAR
+                ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                $$ = pf->type;
+                sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
             }
             else if (en->category == cate_proc) {
                 // do nothing (yet)
@@ -430,11 +532,6 @@ fator:
             generate_code(-1, "NEGA");
         }
 ;
-
-variavel:
-    IDENT
-;
-
 
 %%
 
