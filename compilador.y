@@ -19,6 +19,9 @@ int trigger = 1, trigger2 = 1;
 Stack * DMEM_Stack = NULL;
 
 
+int param_index = -1;
+Procedimento * curr_proc = NULL;
+
 %}
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
@@ -125,7 +128,7 @@ lista_idents:
 ;
 
 parte_declara_subrotinas:
-    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA |
+    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA {trigger = 1;} |
 ;
 
 declara_proced:
@@ -148,7 +151,16 @@ declara_proced:
 ;
 
 declara_proc_complemento:
-    param_formais PONTO_E_VIRGULA bloco |
+    param_formais PONTO_E_VIRGULA bloco 
+        {
+            Procedimento * p = get_top_procedure();
+            if (!p)
+                trigger_error("no procedure on top");
+
+            sprintf(str_aux, "RTPR %d, %d", nivel_lexico + 1, p->n_params);
+
+            generate_code(-1, str_aux);
+        } |
     PONTO_E_VIRGULA bloco
         {
             sprintf(str_aux, "RTPR %d, %d", nivel_lexico + 1, 0);
@@ -229,56 +241,80 @@ linha_comando:
 complemento_linha:
     ATRIBUICAO expressao
         {
-        // armazenar valor da expressao que foi calculada
-        Entry * en = get_entry(atrib_aux);
+            // armazenar valor da expressao que foi calculada
+            Entry * en = get_entry(atrib_aux);
 
-        if (!en) {
-            trigger_error("unknown variable");
-        }
-
-        if (en->category == cate_vs) {
-            VariavelSimples * vs = en->element;
-
-            if (vs->type != $2) {
-                trigger_error("type mismatch");
+            if (!en) {
+                trigger_error("unknown variable");
             }
 
-            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-        
-            generate_code(-1, str_aux);
-        }
-        else if (en->category == cate_pf) {
-            // do something
-            ParametroFormal * pf = (ParametroFormal *) en->element;
+            if (en->category == cate_vs) {
+                VariavelSimples * vs = en->element;
 
-            if (pf->type != $2) {
-                trigger_error("type mismatch");
+                if (vs->type != $2) {
+                    trigger_error("type mismatch");
+                }
+
+                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
             }
+            else if (en->category == cate_pf) {
+                // do something
+                ParametroFormal * pf = (ParametroFormal *) en->element;
 
-            // mudar esse baraio
-            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-        
-            generate_code(-1, str_aux);
-        }
-        else {
-            trigger_error("you can only assign values to variables");
-        }
-    } |
+                if (pf->type != $2) {
+                    trigger_error("type mismatch");
+                }
+
+                // mudar esse baraio
+                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
+            }
+            else {
+                trigger_error("you can only assign values to variables");
+            }
+        } |
     // chamada de procedimentos com parametros
-    ABRE_PARENTESES lista_express FECHA_PARENTESES |
-    // chamada de procedimento sem parametros
-    {
-        Entry * en = get_entry(atrib_aux);
-        
-        if (!en)
-            trigger_error("unknown procedure");
+        {
+            Entry * en = get_entry(atrib_aux);
+            
+            if (!en)
+                trigger_error("unknown procedure");
 
-        Procedimento * proc = (Procedimento *) en->element;
+            curr_proc = (Procedimento *) en->element;
 
-        sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
-        generate_code(-1, str_aux);
-    }
+            param_index = 0;
+
+            sprintf(str_aux, "CHPR R%d, %d", curr_proc->n_rotulo, nivel_lexico);
+            generate_code(-1, str_aux);
+        }
+    ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
+        {
+            //
+            curr_proc = NULL;
+        } |
+        // chamada de procedimento sem parametros
+        {
+            Entry * en = get_entry(atrib_aux);
+            
+            if (!en)
+                trigger_error("unknown procedure");
+
+            Procedimento * proc = (Procedimento *) en->element;
+
+            sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
+            generate_code(-1, str_aux);
+        }
 ;
+
+
+lista_express_proc:
+    lista_express_proc VIRGULA expressao {param_index++;} |
+    expressao {param_index++;} |
+;
+
 
 comando_condicional: 
     if_then cond_else
@@ -353,10 +389,6 @@ comando_repetitivo:
         }
 ;
 
-lista_express: 
-    lista_express VIRGULA expressao |
-    expressao |
-;
 
 expressao:
     expressao_simples relacao expressao_simples
@@ -483,25 +515,57 @@ fator:
             if (!en)
                 trigger_error("unknown variable");
 
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = (VariavelSimples*) en->element;
+            if (curr_proc) {                
+                if (en->category == cate_vs) {
+                    VariavelSimples * vs = (VariavelSimples*) en->element;
 
-                $$ = vs->type;
-                sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                // ISSO AQUI AINDA TEM QUE MUDAR
-                ParametroFormal * pf = (ParametroFormal*) en->element;
+                    if (vs->type != curr_proc->params[param_index].type)
+                        trigger_error("invalid param given to procedure");
 
-                $$ = pf->type;
-                sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
+                    $$ = vs->type;
+                    const char * to_write = generate_mepa_param(en, &(curr_proc->params[param_index]));
+                    sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+                
+                    generate_code(-1, str_aux);
+                }
+                else if (en->category == cate_pf) {
+                    
+                    // ISSO AQUI AINDA TEM QUE MUDAR
+                    ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                    if (pf->type != curr_proc->params[param_index].type)
+                        trigger_error("invalid param given to procedure");
+
+                    $$ = pf->type;
+
+                    const char * to_write = generate_mepa_param(en, &(curr_proc->params[param_index]));
+                    sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+                
+                    generate_code(-1, str_aux);
+                }
             }
-            else if (en->category == cate_proc) {
-                // do nothing (yet)
+            else {
+                if (en->category == cate_vs) {
+                    VariavelSimples * vs = (VariavelSimples*) en->element;
+
+                    $$ = vs->type;
+                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                
+                    generate_code(-1, str_aux);
+                }
+                else if (en->category == cate_pf) {
+                    // ISSO AQUI AINDA TEM QUE MUDAR
+                    ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                    $$ = pf->type;
+
+                    if (pf->ref)
+                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
+                    else
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                
+                    generate_code(-1, str_aux);
+                }
             }
         } |
     NUMERO 

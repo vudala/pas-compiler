@@ -352,6 +352,7 @@ void update_proc_params()
     ParametroFormal * pf = NULL;
 
     int i = p->n_params;
+    int offs_c = -3;
     while(en && i--) {
         pf = (ParametroFormal *) en->element;
         if (!pf)
@@ -359,9 +360,44 @@ void update_proc_params()
         
         memcpy(&(p->params[i]), pf, sizeof(ParametroFormal));
 
+        en->addr.offset = offs_c++;
         en = (Entry *) el->prev;
     }
 
     if (i != -1)
         trigger_error("unable to fill all params of procedure");
+}
+
+
+const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2)
+{
+    if (!en1 || !pf2)
+        return NULL;
+
+    if (en1->category == cate_vs) {
+        if (pf2->ref)
+            return "CREN";
+        else
+            return "CRVL";
+    }
+    else if (en1->category == cate_pf) {
+        ParametroFormal * pf1 = (ParametroFormal *) en1->element;
+        if (!pf1)
+            return NULL;
+
+        if (pf1->ref) {
+            if (pf2->ref)
+                return "CRVL";
+            else
+                return "CRVI";
+        }
+        else {
+            if (pf2->ref)
+                return "CREN";
+            else
+                return "CRVL";    
+        }
+    }
+
+    return NULL;
 }

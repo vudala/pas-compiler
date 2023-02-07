@@ -105,4 +105,6 @@ Procedimento * get_top_procedure();
 
 void update_proc_params();
 
+const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2);
+
 #endif

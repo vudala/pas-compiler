@@ -3,8 +3,7 @@ var z, x: integer;
    procedure g(t:integer);
    var y : integer;
    begin
-      y:=t*t; z:=z+x+y;
-      write(z)
+      y:=t*t; z:=z+x+y
    end;
 
    procedure h (y : integer);
