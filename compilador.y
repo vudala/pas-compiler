@@ -61,17 +61,7 @@ lista_idents:
 
 bloco:
     parte_declara_vars
-    {
-        sprintf(str_aux, "DSVS R%.2d", create_label());
-        generate_code(-1, str_aux);
-    }
     parte_declara_subrotinas
-    {
-        int * rot = (int*) get_top_label()->v;
-        generate_code(*rot, "NADA");
-
-        destroy_labels(1);
-    }
     comando_composto
     {
         destroy_block_entries(nivel_lexico);
@@ -83,8 +73,6 @@ bloco:
 
 ///////////// DECLARACAO DE VARIAVEIS
 parte_declara_vars:   
-    parte_declara_vars declara_vars
-    |
     {
         num_vars_declaradas = 0;
         offset = 0;
@@ -103,12 +91,12 @@ parte_declara_vars:
 ;
 
 declara_vars:
-    lista_id_var DOIS_PONTOS tipo
+    declara_vars lista_id_var DOIS_PONTOS tipo
     {
         // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
         update_types(cate_vs, 0, Token);
     }
-    PONTO_E_VIRGULA
+    PONTO_E_VIRGULA |
 ;
 /////////////
 
@@ -130,8 +118,17 @@ lista_id_var:
 ;
 
 parte_declara_subrotinas:
-    parte_declara_subrotinas declara_proced
+    parte_declara_subrotinas
     {
+        sprintf(str_aux, "DSVS R%.2d", create_label());
+        generate_code(-1, str_aux);
+    }
+    declara_proced
+    {   
+        int * rot = (int*) get_top_label()->v;
+        generate_code(*rot, "NADA");
+
+        destroy_labels(1);
         nivel_lexico -= 1;
     }
     PONTO_E_VIRGULA |
