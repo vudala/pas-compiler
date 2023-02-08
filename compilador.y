@@ -43,12 +43,19 @@ Procedimento * curr_proc = NULL;
 programa:
     {generate_code(-1, "INPP");}
     PROGRAM IDENT
-    ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
+    main_params PONTO_E_VIRGULA
     bloco
     PONTO
-    {
-        generate_code(-1, "PARA");
-    }
+    {generate_code(-1, "PARA");}
+;
+
+main_params:
+    ABRE_PARENTESES lista_idents FECHA_PARENTESES |
+;
+
+lista_idents:
+    lista_idents VIRGULA IDENT |
+    IDENT
 ;
 
 
@@ -72,10 +79,6 @@ bloco:
         sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
         generate_code(-1, str_aux);
     }
-;
-
-tipo:
-    INTEIRO | BOOLEANO
 ;
 
 ///////////// DECLARACAO DE VARIAVEIS
@@ -124,11 +127,6 @@ lista_id_var:
         num_vars_declaradas += 1;
         offset += 1;
     }
-;
-
-lista_idents:
-    lista_idents VIRGULA IDENT |
-    IDENT
 ;
 
 parte_declara_subrotinas:
@@ -197,6 +195,10 @@ sec_param_formais:
         {
             update_types(cate_pf, 0, Token);
         }
+;
+
+tipo:
+    INTEIRO | BOOLEANO
 ;
 
 lista_ident_params :
