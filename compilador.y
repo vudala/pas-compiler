@@ -162,9 +162,7 @@ declara_proced:
 
 param_formais: 
     ABRE_PARENTESES parte_param_formais FECHA_PARENTESES
-    {
-        update_proc_params();
-    } |
+    {update_proc_params();} |
 ;
 
 parte_param_formais:
@@ -192,12 +190,7 @@ lista_ident_params :
 
             p->n_params += 1;
 
-            printf("TOPO ERA %p\n", Symbol_Table);
-
             push_symbol(cate_pf);
-            printf("ANTERIOR É %p\n", Symbol_Table->prev);
-
-            printf("TOPO É %p\n", Symbol_Table);
         } |
     IDENT
         {
@@ -207,12 +200,7 @@ lista_ident_params :
 
             p->n_params += 1;
 
-            printf("TOPO ERA %p\n", Symbol_Table);
-
             push_symbol(cate_pf);
-
-            printf("ANTERIOR É %p\n", Symbol_Table->prev);
-            printf("TOPO É %p\n", Symbol_Table);
         }
 ;
 
@@ -241,6 +229,7 @@ linha_comando:
 ;
 
 complemento_linha:
+    // atribuicao
     ATRIBUICAO expressao
     {
         // armazenar valor da expressao que foi calculada
@@ -670,20 +659,20 @@ fator:
             generate_code(-1, str_aux);
         } |
     ABRE_PARENTESES expressao FECHA_PARENTESES
-    {
-        if (curr_proc) {
-            if ($2 != curr_proc->params[param_index].type)
-                trigger_error("invalid arg type");
+        {
+            if (curr_proc) {
+                if ($2 != curr_proc->params[param_index].type)
+                    trigger_error("invalid arg type");
 
-            if (curr_proc->params[param_index].ref)
-                trigger_error("const cant be passed by reference");
-        }
+                if (curr_proc->params[param_index].ref)
+                    trigger_error("const cant be passed by reference");
+            }
 
-        if (read_trigger)
-                trigger_error("invalid param for read");
+            if (read_trigger)
+                    trigger_error("invalid param for read");
 
-        $$ = $2;
-    } |
+            $$ = $2;
+        } |
     NOT fator 
         {
             if ($2 != tipo_booleano)
