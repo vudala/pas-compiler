@@ -287,17 +287,17 @@ complemento_linha:
         curr_proc = (Procedimento *) en->element;
 
         param_index = 0;
-
-        sprintf(str_aux, "CHPR R%.2d, %d", curr_proc->n_rotulo, nivel_lexico);
-        generate_code(-1, str_aux);
     }
     ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
     {
         if (param_index > curr_proc->n_params)
-            trigger_error("too many arguments");
+            trigger_error("too many arguments");    
 
         if (param_index < curr_proc->n_params)
             trigger_error("too few arguments");
+        
+        sprintf(str_aux, "CHPR R%.2d, %d", curr_proc->n_rotulo, nivel_lexico);
+        generate_code(-1, str_aux);
 
         curr_proc = NULL;
     } |
@@ -563,9 +563,9 @@ fator:
                     $$ = pf->type;
 
                     if (pf->ref)
-                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl + 1, en->addr.offset);
                     else
-                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl + 1, en->addr.offset);
                 
                     generate_code(-1, str_aux);
                 }
