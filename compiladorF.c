@@ -33,7 +33,7 @@ void generate_code(int rot, char* comando)
         fprintf(fp, "     %s\n", comando); fflush(fp);
     }
     else {
-        fprintf(fp, "R%d: %s \n", rot, comando); fflush(fp);
+        fprintf(fp, "R%.2d: %s \n", rot, comando); fflush(fp);
     }
 }
 
@@ -352,7 +352,7 @@ void update_proc_params()
     ParametroFormal * pf = NULL;
 
     int i = p->n_params;
-    int offs_c = -3;
+    int offs_c = -4;
     while(en && i--) {
         pf = (ParametroFormal *) en->element;
         if (!pf)
@@ -360,7 +360,7 @@ void update_proc_params()
         
         memcpy(&(p->params[i]), pf, sizeof(ParametroFormal));
 
-        en->addr.offset = offs_c++;
+        en->addr.offset = offs_c--;
         en = (Entry *) el->prev;
     }
 

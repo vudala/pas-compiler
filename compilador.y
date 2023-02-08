@@ -15,7 +15,6 @@
 int num_vars_declaradas, nivel_lexico = -1, offset;
 char str_aux[100], atrib_aux[100];
 extern Stack * Symbol_Table;
-int trigger = 1, trigger = 2;
 Stack * DMEM_Stack = NULL;
 
 
@@ -44,8 +43,13 @@ programa:
     {generate_code(-1, "INPP");}
     PROGRAM IDENT
     ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-    bloco PONTO
-    {generate_code(-1, "PARA");}
+    bloco
+    PONTO
+    {
+        generate_code(-1, str_aux);
+
+        generate_code(-1, "PARA");
+    }
 ;
 
 
@@ -53,15 +57,16 @@ bloco:
     {nivel_lexico += 1;}
     parte_declara_vars
     {
-        if (trigger) {
-            sprintf(str_aux, "DSVS R%d", create_label());
-            
-            generate_code(-1, str_aux);
-        }
-
-        trigger = 0;
+        sprintf(str_aux, "DSVS R%.2d", create_label());
+        generate_code(-1, str_aux);
     }
     parte_declara_subrotinas
+    {
+        int * rot = (int*) get_top_label()->v;
+        generate_code(*rot, "NADA");
+
+        destroy_labels(1);
+    }
     comando_composto
     {
         sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
@@ -240,6 +245,7 @@ linha_comando:
 complemento_linha:
     ATRIBUICAO expressao
     {
+        // todo
         // armazenar valor da expressao que foi calculada
         Entry * en = get_entry(atrib_aux);
 
@@ -282,7 +288,7 @@ complemento_linha:
 
         param_index = 0;
 
-        sprintf(str_aux, "CHPR R%d, %d", curr_proc->n_rotulo, nivel_lexico);
+        sprintf(str_aux, "CHPR R%.2d, %d", curr_proc->n_rotulo, nivel_lexico);
         generate_code(-1, str_aux);
     }
     ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
@@ -304,7 +310,7 @@ complemento_linha:
 
         Procedimento * proc = (Procedimento *) en->element;
 
-        sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
+        sprintf(str_aux, "CHPR R%.2d, %d", proc->n_rotulo, nivel_lexico);
         generate_code(-1, str_aux);
     }
 ;
@@ -328,7 +334,7 @@ if_then:
 
         int rot = create_label();
 
-        sprintf(str_aux, "DSVF R%d", rot);
+        sprintf(str_aux, "DSVF R%.2d", rot);
         generate_code(-1, str_aux);
     }
     THEN comando
@@ -338,7 +344,7 @@ cond_else:
     ELSE 
         {
             int rot1 = create_label();
-            sprintf(str_aux, "DSVS R%d", rot1);
+            sprintf(str_aux, "DSVS R%.2d", rot1);
             generate_code(-1, str_aux);
 
             Stack * rot = get_top_label();
@@ -371,7 +377,7 @@ comando_repetitivo:
     expressao
         {
             int rot = create_label();
-            sprintf(str_aux, "DSVF R%d", rot);
+            sprintf(str_aux, "DSVF R%.2d", rot);
             generate_code(-1, str_aux);
         }
     DO
@@ -380,7 +386,7 @@ comando_repetitivo:
             Stack * rot1 = get_top_label();
             Stack * rot2 = rot1->prev;
 
-            sprintf(str_aux, "DSVS R%d", *((int*)rot2->v));
+            sprintf(str_aux, "DSVS R%.2d", *((int*)rot2->v));
             generate_code(-1, str_aux);
 
             generate_code(*((int*) rot1->v), "NADA");
