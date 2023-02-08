@@ -15,7 +15,7 @@
 int num_vars_declaradas, nivel_lexico = -1, offset;
 char str_aux[100], atrib_aux[100];
 extern Stack * Symbol_Table;
-int trigger = 1, trigger2 = 1;
+int trigger = 1, trigger = 2;
 Stack * DMEM_Stack = NULL;
 
 
@@ -52,13 +52,16 @@ programa:
 bloco:
     {nivel_lexico += 1;}
     parte_declara_vars
-    parte_declara_subrotinas
     {
         if (trigger) {
-            trigger = 0;
-            generate_code(0, "NADA");
+            sprintf(str_aux, "DSVS R%d", create_label());
+            
+            generate_code(-1, str_aux);
         }
+
+        trigger = 0;
     }
+    parte_declara_subrotinas
     comando_composto
     {
         sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
@@ -128,26 +131,22 @@ lista_idents:
 ;
 
 parte_declara_subrotinas:
-    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA {trigger = 1;} |
+    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA |
 ;
 
 declara_proced:
     PROCEDURE IDENT
         {
-            trigger = 0;
-            if (trigger2) {
-                trigger2 = 0;
-                generate_code(-1, "DSVS R0");
-            }
-
             sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
 
-            int rot = create_label();
-            generate_code(rot, str_aux);
+            generate_code(create_label(), str_aux);
 
             push_symbol(cate_proc);
         }
     declara_proc_complemento
+        {
+            destroy_labels(1);
+        }
 ;
 
 declara_proc_complemento:
@@ -240,73 +239,74 @@ linha_comando:
 
 complemento_linha:
     ATRIBUICAO expressao
-        {
-            // armazenar valor da expressao que foi calculada
-            Entry * en = get_entry(atrib_aux);
+    {
+        // armazenar valor da expressao que foi calculada
+        Entry * en = get_entry(atrib_aux);
 
-            if (!en) {
-                trigger_error("unknown variable");
-            }
+        if (!en)
+            trigger_error("unknown variable");
 
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = en->element;
+        if (en->category == cate_vs) {
+            VariavelSimples * vs = en->element;
 
-                if (vs->type != $2) {
-                    trigger_error("type mismatch");
-                }
+            if (vs->type != $2)
+                trigger_error("type mismatch");
 
-                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                // do something
-                ParametroFormal * pf = (ParametroFormal *) en->element;
+            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+        
+            generate_code(-1, str_aux);
+        }
+        else if (en->category == cate_pf) {
+            ParametroFormal * pf = (ParametroFormal *) en->element;
 
-                if (pf->type != $2) {
-                    trigger_error("type mismatch");
-                }
+            if (pf->type != $2)
+                trigger_error("type mismatch");
 
-                // mudar esse baraio
-                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else {
-                trigger_error("you can only assign values to variables");
-            }
-        } |
+            // mudar esse baraio
+            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+        
+            generate_code(-1, str_aux);
+        }
+        else {
+            trigger_error("you can only assign values to variables");
+        }
+    } |
     // chamada de procedimentos com parametros
-        {
-            Entry * en = get_entry(atrib_aux);
-            
-            if (!en)
-                trigger_error("unknown procedure");
+    {
+        Entry * en = get_entry(atrib_aux);
+        
+        if (!en)
+            trigger_error("unknown procedure");
 
-            curr_proc = (Procedimento *) en->element;
+        curr_proc = (Procedimento *) en->element;
 
-            param_index = 0;
+        param_index = 0;
 
-            sprintf(str_aux, "CHPR R%d, %d", curr_proc->n_rotulo, nivel_lexico);
-            generate_code(-1, str_aux);
-        }
+        sprintf(str_aux, "CHPR R%d, %d", curr_proc->n_rotulo, nivel_lexico);
+        generate_code(-1, str_aux);
+    }
     ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
-        {
-            //
-            curr_proc = NULL;
-        } |
-        // chamada de procedimento sem parametros
-        {
-            Entry * en = get_entry(atrib_aux);
-            
-            if (!en)
-                trigger_error("unknown procedure");
+    {
+        if (param_index > curr_proc->n_params)
+            trigger_error("too many arguments");
 
-            Procedimento * proc = (Procedimento *) en->element;
+        if (param_index < curr_proc->n_params)
+            trigger_error("too few arguments");
 
-            sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
-            generate_code(-1, str_aux);
-        }
+        curr_proc = NULL;
+    } |
+    // chamada de procedimento sem parametros
+    {
+        Entry * en = get_entry(atrib_aux);
+        
+        if (!en)
+            trigger_error("unknown procedure");
+
+        Procedimento * proc = (Procedimento *) en->element;
+
+        sprintf(str_aux, "CHPR R%d, %d", proc->n_rotulo, nivel_lexico);
+        generate_code(-1, str_aux);
+    }
 ;
 
 
@@ -439,7 +439,7 @@ expressao_simples:
 
             $$ = tipo_inteiro;
             generate_code(-1, "SUBT");
-        }|
+        } |
     expressao_simples MAIS termo
         {
             if ($1 != $3)
@@ -450,8 +450,8 @@ expressao_simples:
 
             $$ = tipo_inteiro;
             generate_code(-1, "SOMA");
-        }  |
-    MAIS termo
+        } |
+        MAIS termo
         {
             if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
@@ -529,8 +529,6 @@ fator:
                     generate_code(-1, str_aux);
                 }
                 else if (en->category == cate_pf) {
-                    
-                    // ISSO AQUI AINDA TEM QUE MUDAR
                     ParametroFormal * pf = (ParametroFormal*) en->element;
 
                     if (pf->type != curr_proc->params[param_index].type)
@@ -554,7 +552,6 @@ fator:
                     generate_code(-1, str_aux);
                 }
                 else if (en->category == cate_pf) {
-                    // ISSO AQUI AINDA TEM QUE MUDAR
                     ParametroFormal * pf = (ParametroFormal*) en->element;
 
                     $$ = pf->type;
@@ -570,27 +567,69 @@ fator:
         } |
     NUMERO 
         {
+            if (curr_proc) {
+                if (tipo_inteiro != curr_proc->params[param_index].type)
+                    trigger_error("invalid arg type");
+
+                if (curr_proc->params[param_index].ref)
+                    trigger_error("const cant be passed by reference");
+            }
+
             $$ = tipo_inteiro;
             sprintf(str_aux, "CRCT %s", Token);
             generate_code(-1, str_aux);
         } |
     TRUE 
         {
+            if (curr_proc) {
+                if (tipo_booleano != curr_proc->params[param_index].type)
+                    trigger_error("invalid arg type");
+
+                if (curr_proc->params[param_index].ref)
+                    trigger_error("const cant be passed by reference");
+            }
+
             $$ = tipo_booleano;
             sprintf(str_aux, "CRCT 1");
             generate_code(-1, str_aux);
         } |
     FALSE 
         {
+            if (curr_proc) {
+                if (tipo_booleano != curr_proc->params[param_index].type)
+                    trigger_error("invalid arg type");
+
+                if (curr_proc->params[param_index].ref)
+                    trigger_error("const cant be passed by reference");
+            }
+
             $$ = tipo_booleano;
             sprintf(str_aux, "CRCT 0");
             generate_code(-1, str_aux);
         } |
-    ABRE_PARENTESES expressao FECHA_PARENTESES {$$ = $2;} |
+    ABRE_PARENTESES expressao FECHA_PARENTESES
+    {
+        if (curr_proc) {
+            if ($2 != curr_proc->params[param_index].type)
+                trigger_error("invalid arg type");
+
+            if (curr_proc->params[param_index].ref)
+                trigger_error("const cant be passed by reference");
+        }
+        $$ = $2;
+    } |
     NOT fator 
         {
             if ($2 != tipo_booleano)
                 trigger_error("invalid operation");
+
+            if (curr_proc) {
+                if (tipo_booleano != curr_proc->params[param_index].type)
+                    trigger_error("invalid arg type");
+
+                if (curr_proc->params[param_index].ref)
+                    trigger_error("const cant be passed by reference");
+            }
 
             $$ = tipo_booleano;
             generate_code(-1, "NEGA");

@@ -19,7 +19,7 @@ char Token[TAM_TOKEN];
 Stack * Symbol_Table = NULL;
 
 // controle de rotulos
-int Label_Counter = 1;
+int Label_Counter = 0;
 Stack * Labels = NULL;
 
 FILE* fp = NULL;
@@ -400,4 +400,9 @@ const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2)
     }
 
     return NULL;
+}
+
+int match_type(int type1, int type2)
+{
+    return type1 == type2;
 }
