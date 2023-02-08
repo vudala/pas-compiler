@@ -30,11 +30,13 @@ void push(Stack ** base, void * v)
     elem->v = v;
     elem->next = NULL;
 
+    *base = top(*base);
+
     if (*base == NULL) {
         elem->prev = NULL;
     }
     else {
-        Stack * top_el = top(*base);
+        Stack * top_el = *base;
         elem->prev = top_el;
         top_el->next = elem;
     }
@@ -56,7 +58,7 @@ void * pop(Stack ** base)
         (*base)->next = NULL;
 
     void * ret = el->v;
-    //free(el);
+    free(el);
 
     return ret;
 }

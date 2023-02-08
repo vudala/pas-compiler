@@ -366,7 +366,7 @@ void update_proc_params()
 
     int i = p->n_params;
     int offs_c = -4;
-    while(en && i--) {
+    while(el && en && i--) {
         ParametroFormal * pf = (ParametroFormal *) en->element;
         if (!pf)
             trigger_error("unknwon param");
@@ -374,7 +374,8 @@ void update_proc_params()
         memcpy(&(p->params[i]), pf, sizeof(ParametroFormal));
 
         en->addr.offset = offs_c--;
-        en = (Entry *) el->prev;
+        el = el->prev;
+        en = (Entry *) el->v;
     }
 
     if (i != -1)

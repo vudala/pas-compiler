@@ -145,37 +145,26 @@ declara_proced:
 
             nivel_lexico += 1;
         }
-    declara_proc_complemento
-        {
-            destroy_labels(1);
-        }
+    param_formais PONTO_E_VIRGULA
+    bloco
+    {
+        Procedimento * p = get_top_procedure();
+        if (!p)
+            trigger_error("no procedure on top");
+
+        sprintf(str_aux, "RTPR %d, %d", nivel_lexico, p->n_params);
+
+        generate_code(-1, str_aux);
+
+        destroy_labels(1);
+    }
 ;
-
-declara_proc_complemento:
-    param_formais PONTO_E_VIRGULA bloco 
-        {
-            Procedimento * p = get_top_procedure();
-            if (!p)
-                trigger_error("no procedure on top");
-
-            sprintf(str_aux, "RTPR %d, %d", nivel_lexico, p->n_params);
-
-            generate_code(-1, str_aux);
-        } |
-    PONTO_E_VIRGULA bloco
-        {
-            sprintf(str_aux, "RTPR %d, %d", nivel_lexico, 0);
-
-            generate_code(-1, str_aux);
-        }
-;
-
 
 param_formais: 
     ABRE_PARENTESES parte_param_formais FECHA_PARENTESES
     {
         update_proc_params();
-    }
+    } |
 ;
 
 parte_param_formais:
@@ -194,10 +183,6 @@ sec_param_formais:
         }
 ;
 
-tipo:
-    INTEIRO | BOOLEANO
-;
-
 lista_ident_params :
     lista_ident_params VIRGULA IDENT
         {
@@ -207,7 +192,12 @@ lista_ident_params :
 
             p->n_params += 1;
 
+            printf("TOPO ERA %p\n", Symbol_Table);
+
             push_symbol(cate_pf);
+            printf("ANTERIOR É %p\n", Symbol_Table->prev);
+
+            printf("TOPO É %p\n", Symbol_Table);
         } |
     IDENT
         {
@@ -217,8 +207,17 @@ lista_ident_params :
 
             p->n_params += 1;
 
+            printf("TOPO ERA %p\n", Symbol_Table);
+
             push_symbol(cate_pf);
+
+            printf("ANTERIOR É %p\n", Symbol_Table->prev);
+            printf("TOPO É %p\n", Symbol_Table);
         }
+;
+
+tipo:
+    INTEIRO | BOOLEANO
 ;
 
 comando_composto: 
