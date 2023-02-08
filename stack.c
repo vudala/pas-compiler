@@ -48,13 +48,15 @@ void * pop(Stack ** base)
     if (base == NULL || *base == NULL)
         return NULL;
 
+    *base = top(*base);
+
     Stack * el = *base;
     *base = el->prev;
     if (*base)
         (*base)->next = NULL;
 
     void * ret = el->v;
-    free(el);
+    //free(el);
 
     return ret;
 }

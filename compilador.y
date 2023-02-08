@@ -12,8 +12,9 @@
 #include "compilador.h"
 #include "stack.h"
 
-int num_vars_declaradas, nivel_lexico = -1, offset;
-char str_aux[100], atrib_aux[100];
+int num_vars_declaradas, nivel_lexico = 0, offset;
+int write_trigger = 0, read_trigger = 0;
+char str_aux[100], ident_aux[100];
 extern Stack * Symbol_Table;
 Stack * DMEM_Stack = NULL;
 
@@ -46,15 +47,12 @@ programa:
     bloco
     PONTO
     {
-        generate_code(-1, str_aux);
-
         generate_code(-1, "PARA");
     }
 ;
 
 
 bloco:
-    {nivel_lexico += 1;}
     parte_declara_vars
     {
         sprintf(str_aux, "DSVS R%.2d", create_label());
@@ -69,11 +67,9 @@ bloco:
     }
     comando_composto
     {
-        sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
-
         destroy_block_entries(nivel_lexico);
 
-        nivel_lexico -= 1;
+        sprintf(str_aux, "DMEM %i", *((int*) pop(&DMEM_Stack)));
         generate_code(-1, str_aux);
     }
 ;
@@ -136,7 +132,11 @@ lista_idents:
 ;
 
 parte_declara_subrotinas:
-    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA |
+    parte_declara_subrotinas declara_proced
+    {
+        nivel_lexico -= 1;
+    }
+    PONTO_E_VIRGULA |
 ;
 
 declara_proced:
@@ -147,6 +147,8 @@ declara_proced:
             generate_code(create_label(), str_aux);
 
             push_symbol(cate_proc);
+
+            nivel_lexico += 1;
         }
     declara_proc_complemento
         {
@@ -161,13 +163,13 @@ declara_proc_complemento:
             if (!p)
                 trigger_error("no procedure on top");
 
-            sprintf(str_aux, "RTPR %d, %d", nivel_lexico + 1, p->n_params);
+            sprintf(str_aux, "RTPR %d, %d", nivel_lexico, p->n_params);
 
             generate_code(-1, str_aux);
         } |
     PONTO_E_VIRGULA bloco
         {
-            sprintf(str_aux, "RTPR %d, %d", nivel_lexico + 1, 0);
+            sprintf(str_aux, "RTPR %d, %d", nivel_lexico, 0);
 
             generate_code(-1, str_aux);
         }
@@ -220,8 +222,6 @@ lista_ident_params :
         }
 ;
 
-
-//! ISTO ESTA ERRADO ? -> ou transformamos o interno em outra regra msm?
 comando_composto: 
     T_BEGIN lista_comando T_END
 ;
@@ -239,15 +239,14 @@ comando:
 ;
 
 linha_comando:
-    IDENT {strcpy(atrib_aux, Token);} complemento_linha 
+    IDENT {strcpy(ident_aux, Token);} complemento_linha 
 ;
 
 complemento_linha:
     ATRIBUICAO expressao
     {
-        // todo
         // armazenar valor da expressao que foi calculada
-        Entry * en = get_entry(atrib_aux);
+        Entry * en = get_entry(ident_aux);
 
         if (!en)
             trigger_error("unknown variable");
@@ -268,8 +267,10 @@ complemento_linha:
             if (pf->type != $2)
                 trigger_error("type mismatch");
 
-            // mudar esse baraio
-            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+            if (pf->ref)
+                sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
+            else
+                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
         
             generate_code(-1, str_aux);
         }
@@ -279,31 +280,45 @@ complemento_linha:
     } |
     // chamada de procedimentos com parametros
     {
-        Entry * en = get_entry(atrib_aux);
+        if (strcmp("write", ident_aux) == 0) {
+            write_trigger = 1;
+        }
+        else if (strcmp("read", ident_aux) == 0) {
+            read_trigger = 1;
+        }
+        else {
+            Entry * en = get_entry(ident_aux);
         
-        if (!en)
-            trigger_error("unknown procedure");
+            if (!en)
+                trigger_error("unknown procedure");
 
-        curr_proc = (Procedimento *) en->element;
+            curr_proc = (Procedimento *) en->element;
+        }
 
         param_index = 0;
     }
     ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
     {
-        if (param_index > curr_proc->n_params)
-            trigger_error("too many arguments");    
+        if (write_trigger || read_trigger) {
+            write_trigger = 0;
+            read_trigger = 0;
+        }
+        else {
+            if (param_index > curr_proc->n_params)
+                trigger_error("too many arguments");    
 
-        if (param_index < curr_proc->n_params)
-            trigger_error("too few arguments");
-        
-        sprintf(str_aux, "CHPR R%.2d, %d", curr_proc->n_rotulo, nivel_lexico);
-        generate_code(-1, str_aux);
+            if (param_index < curr_proc->n_params)
+                trigger_error("too few arguments");
+            
+            sprintf(str_aux, "CHPR R%.2d, %d", curr_proc->n_rotulo, nivel_lexico);
+            generate_code(-1, str_aux);
 
-        curr_proc = NULL;
+            curr_proc = NULL;
+        }
     } |
     // chamada de procedimento sem parametros
     {
-        Entry * en = get_entry(atrib_aux);
+        Entry * en = get_entry(ident_aux);
         
         if (!en)
             trigger_error("unknown procedure");
@@ -317,8 +332,29 @@ complemento_linha:
 
 
 lista_express_proc:
-    lista_express_proc VIRGULA expressao {param_index++;} |
-    expressao {param_index++;} |
+    lista_express_proc VIRGULA
+    {
+        if (read_trigger)
+            generate_code(-1, "LEIT");
+    }
+    expressao
+    {
+        if (write_trigger)
+            generate_code(-1, "IMPR");
+
+        param_index++;
+    } |
+    {
+        if (read_trigger)
+            generate_code(-1, "LEIT");
+    }
+    expressao
+    {
+        if (write_trigger)
+            generate_code(-1, "IMPR");
+
+        param_index++;
+    } |
 ;
 
 
@@ -457,7 +493,7 @@ expressao_simples:
             $$ = tipo_inteiro;
             generate_code(-1, "SOMA");
         } |
-        MAIS termo
+    MAIS termo
         {
             if ($2 != tipo_inteiro)
                 trigger_error("invalid operation");
@@ -553,7 +589,12 @@ fator:
                     VariavelSimples * vs = (VariavelSimples*) en->element;
 
                     $$ = vs->type;
-                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                    if (read_trigger) {
+                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                    }
+                    else {
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                    }
                 
                     generate_code(-1, str_aux);
                 }
@@ -562,10 +603,18 @@ fator:
 
                     $$ = pf->type;
 
-                    if (pf->ref)
-                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl + 1, en->addr.offset);
-                    else
-                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl + 1, en->addr.offset);
+                    if (read_trigger) {
+                        if (pf->ref)
+                            sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
+                        else
+                            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                    }
+                    else {
+                        if (pf->ref)
+                            sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
+                        else
+                            sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                    }
                 
                     generate_code(-1, str_aux);
                 }
@@ -581,6 +630,9 @@ fator:
                     trigger_error("const cant be passed by reference");
             }
 
+            if (read_trigger)
+                trigger_error("invalid param for read");
+
             $$ = tipo_inteiro;
             sprintf(str_aux, "CRCT %s", Token);
             generate_code(-1, str_aux);
@@ -594,6 +646,9 @@ fator:
                 if (curr_proc->params[param_index].ref)
                     trigger_error("const cant be passed by reference");
             }
+
+            if (read_trigger)
+                trigger_error("invalid param for read");
 
             $$ = tipo_booleano;
             sprintf(str_aux, "CRCT 1");
@@ -609,6 +664,9 @@ fator:
                     trigger_error("const cant be passed by reference");
             }
 
+            if (read_trigger)
+                trigger_error("invalid param for read");
+
             $$ = tipo_booleano;
             sprintf(str_aux, "CRCT 0");
             generate_code(-1, str_aux);
@@ -622,6 +680,10 @@ fator:
             if (curr_proc->params[param_index].ref)
                 trigger_error("const cant be passed by reference");
         }
+
+        if (read_trigger)
+                trigger_error("invalid param for read");
+
         $$ = $2;
     } |
     NOT fator 
@@ -636,6 +698,9 @@ fator:
                 if (curr_proc->params[param_index].ref)
                     trigger_error("const cant be passed by reference");
             }
+
+            if (read_trigger)
+                trigger_error("invalid param for read");
 
             $$ = tipo_booleano;
             generate_code(-1, "NEGA");

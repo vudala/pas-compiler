@@ -70,7 +70,7 @@ void print_tabela_simbolos()
         }
         else if (en->category == cate_pf) {
             ParametroFormal * pf = (ParametroFormal *) en->element;
-            printf("PF %s tipo %d\n", en->identifier, pf->type);
+            printf("PF %s tipo %d nl %d\n", en->identifier, pf->type, en->addr.nl);
         }
         el = el->prev;
     }
@@ -91,7 +91,7 @@ void push_symbol(int category)
 
     ne->category = category;
 
-    Stack* el = Symbol_Table;
+    Stack * el = Symbol_Table;
     while(el != NULL){
         Entry* entry = (Entry*) el->v;
 
@@ -125,6 +125,7 @@ void push_symbol(int category)
     else if (category == cate_pf) {
         ParametroFormal * pf = malloc(sizeof(ParametroFormal));
         must_alloc(pf, __func__);
+
         pf->type = tipo_indefinido;
         ne->element = (void*) pf;
     }
@@ -136,6 +137,18 @@ void push_symbol(int category)
 void entry_destroy(void * ptr)
 {
     Entry * ent = (Entry *) ptr;
+    if(ent->category == cate_vs) {
+        free(ent->element);
+    }
+    else if (ent->category == cate_pf) {
+        free(ent->element);
+    }
+    else if (ent->category == cate_proc) {
+        Procedimento * p = (Procedimento*) ent->element;
+        free(p->params);
+        free(p);
+    }
+
     free(ent->identifier);
     free(ent);
 }
@@ -310,7 +323,8 @@ void destroy_block_entries(int nl)
 
     Entry * en = (Entry *) Symbol_Table->v;
     while (en && en->addr.nl == nl) {
-        pop(&Symbol_Table);
+        entry_destroy(pop(&Symbol_Table));
+
         if (Symbol_Table)
             en = (Entry *) Symbol_Table->v;
         else
@@ -349,12 +363,11 @@ void update_proc_params()
 
     Stack * el = Symbol_Table;
     Entry * en = (Entry *) el->v;
-    ParametroFormal * pf = NULL;
 
     int i = p->n_params;
     int offs_c = -4;
     while(en && i--) {
-        pf = (ParametroFormal *) en->element;
+        ParametroFormal * pf = (ParametroFormal *) en->element;
         if (!pf)
             trigger_error("unknwon param");
         
@@ -400,9 +413,4 @@ const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2)
     }
 
     return NULL;
-}
-
-int match_type(int type1, int type2)
-{
-    return type1 == type2;
 }
