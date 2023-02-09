@@ -190,6 +190,7 @@ lista_ident_params :
 
             p->n_params += 1;
 
+            printf("a\n");
             push_symbol(cate_pf);
         } |
     IDENT
@@ -199,6 +200,8 @@ lista_ident_params :
                 trigger_error("no procedure");
 
             p->n_params += 1;
+
+            printf("a\n");
 
             push_symbol(cate_pf);
         }
@@ -214,6 +217,7 @@ comando_composto:
 
 lista_comando:
     comando PONTO_E_VIRGULA lista_comando |
+    comando PONTO_E_VIRGULA |
     comando
 ;
 

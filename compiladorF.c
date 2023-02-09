@@ -70,7 +70,7 @@ void print_tabela_simbolos()
         }
         else if (en->category == cate_pf) {
             ParametroFormal * pf = (ParametroFormal *) en->element;
-            printf("PF %s tipo %d nl %d\n", en->identifier, pf->type, en->addr.nl);
+            printf("PF %s tipo %d nl %d off %d\n", en->identifier, pf->type, en->addr.nl, en->addr.offset);
         }
         el = el->prev;
     }
@@ -116,6 +116,7 @@ void push_symbol(int category)
         Procedimento * p = malloc(sizeof(Procedimento));
         must_alloc(p, __func__);
 
+        p->n_params = 0;
         p->n_rotulo = *((int*) get_top_label()->v);
 
         ne->addr.offset = -1;
@@ -375,7 +376,8 @@ void update_proc_params()
 
         en->addr.offset = offs_c--;
         el = el->prev;
-        en = (Entry *) el->v;
+        if (el)
+            en = (Entry *) el->v;
     }
 
     if (i != -1)
