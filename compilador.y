@@ -20,6 +20,7 @@ Stack * DMEM_Stack = NULL;
 
 
 int param_index = -1;
+int ret = -1;
 char * curr_subr_ident = NULL;
 Subrotina * curr_subr = NULL;
 
@@ -37,6 +38,7 @@ Subrotina * curr_subr = NULL;
 %token PROCEDURE FUNCTION
 
 %nonassoc LOWER_THAN_ELSE
+%nonassoc TOK
 %nonassoc ELSE
 
 %%
@@ -188,13 +190,12 @@ declara_func:
 
         subr->has_ret = 1;
         subr->ret_type = $5;
-        
-        print_tabela_simbolos();
     } 
     PONTO_E_VIRGULA
     bloco
     {
         free(curr_subr_ident);
+        curr_subr_ident = NULL;
     }
 ;
 
@@ -337,7 +338,7 @@ complemento_linha:
 
         param_index = 0;
     }
-    ABRE_PARENTESES lista_express_subr FECHA_PARENTESES
+    ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
     {
         if (write_trigger || read_trigger) {
             write_trigger = 0;
@@ -371,8 +372,8 @@ complemento_linha:
 ;
 
 
-lista_express_subr:
-    lista_express_subr VIRGULA
+lista_express_proc:
+    lista_express_proc VIRGULA
     {
         if (read_trigger)
             generate_code(-1, "LEIT");
@@ -589,7 +590,87 @@ termo:
 ;
 
 fator:
-    IDENT complemento_fator |
+    IDENT
+    {
+        // procurar o simbolo na tabela e empilhar o valor
+        Entry * en = get_entry(Token);
+
+        if (!en)
+            trigger_error("unknown variable");
+
+        if (curr_subr) {                
+            if (en->category == cate_vs) {
+                VariavelSimples * vs = (VariavelSimples*) en->element;
+
+                if (vs->type != curr_subr->params[param_index].type)
+                    trigger_error("invalid param given to procedure");
+
+                $$ = vs->type;
+                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_pf) {
+                ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                if (pf->type != curr_subr->params[param_index].type)
+                    trigger_error("invalid param given to procedure");
+
+                $$ = pf->type;
+
+                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_subr) {
+                Subrotina * subr = en->element;
+                if (!subr->has_ret) {
+                    trigger_error("cant use procedures on expressions");
+                }
+            }
+        }
+        else {
+            if (en->category == cate_vs) {
+                VariavelSimples * vs = (VariavelSimples*) en->element;
+
+                $$ = vs->type;
+                if (read_trigger) {
+                    sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                }
+                else {
+                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                }
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_pf) {
+                ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                $$ = pf->type;
+
+                ret = $$;
+
+                if (read_trigger) {
+                    if (pf->ref)
+                        sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
+                    else
+                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                }
+                else {
+                    if (pf->ref)
+                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
+                    else
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                }
+            
+                generate_code(-1, str_aux);
+            }
+        }
+    }
+    complemento_fator
+    {$$ = ret;} |
     NUMERO 
         {
             if (curr_subr) {
@@ -678,77 +759,42 @@ fator:
 ;
 
 complemento_fator:
-    lista_express_subr |
-    {
-        // procurar o simbolo na tabela e empilhar o valor
-        Entry * en = get_entry(Token);
-
+    {        
+        Entry * en = get_function(Token);
+        
         if (!en)
-            trigger_error("unknown variable");
+            trigger_error("unknown function");
 
-        if (curr_subr) {                
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = (VariavelSimples*) en->element;
+        curr_subr = (Subrotina *) en->element;
+    }
+    ABRE_PARENTESES lista_express_func FECHA_PARENTESES
+    {
+        if (param_index > curr_subr->n_params)
+            trigger_error("too many arguments");    
 
-                if (vs->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
+        if (param_index < curr_subr->n_params)
+            trigger_error("too few arguments");
+        
+        sprintf(str_aux, "CHPR R%.2d, %d", curr_subr->n_rotulo, nivel_lexico);
+        generate_code(-1, str_aux);
+        
+        $$ = curr_subr->ret_type;
 
-                $$ = vs->type;
-                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                ParametroFormal * pf = (ParametroFormal*) en->element;
+        curr_subr = NULL;
+    } |
+;
 
-                if (pf->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
 
-                $$ = pf->type;
-
-                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-        }
-        else {
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = (VariavelSimples*) en->element;
-
-                $$ = vs->type;
-                if (read_trigger) {
-                    sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-                }
-                else {
-                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-                }
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                ParametroFormal * pf = (ParametroFormal*) en->element;
-
-                $$ = pf->type;
-
-                if (read_trigger) {
-                    if (pf->ref)
-                        sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
-                    else
-                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-                }
-                else {
-                    if (pf->ref)
-                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
-                    else
-                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-                }
-            
-                generate_code(-1, str_aux);
-            }
-        }
-    } 
+lista_express_func:
+    lista_express_func VIRGULA
+    expressao
+    {
+        param_index++;
+    } |
+    expressao
+    {
+        param_index++;
+    }
 ;
 
 
