@@ -15,7 +15,7 @@ typedef enum simbolos {
     simb_if, simb_then, simb_else, simb_while, simb_do,
     simb_menor, simb_maior, simb_menor_igual, simb_maior_igual,
     simb_igual, simb_diferente, simb_and, simb_not, simb_or,
-    simb_true, simb_false, simb_procedure
+    simb_true, simb_false, simb_procedure, simb_function
 } Simbolos; 
 
 
@@ -47,11 +47,13 @@ typedef struct parametro_formal {
     int ref;
 } ParametroFormal;
 
-typedef struct procedimento {
+typedef struct subrotina {
     int n_rotulo;
     int n_params;
+    int has_ret;
+    int ret_type;
     ParametroFormal * params;
-} Procedimento;
+} Subrotina;
 
 
 typedef struct entry_t {
@@ -60,7 +62,7 @@ typedef struct entry_t {
     MEPA_Address addr;  // endereço na memória
     enum {
         cate_vs = 0,    // variavel simples
-        cate_proc,      // procedimento
+        cate_subr,      // subrotina
         cate_pf         // parametro formal
     } category;
 } Entry;
@@ -101,9 +103,19 @@ void destroy_block_entries(int nl);
 
 void must_alloc(const void * ptr, const char * msg);
 
-Procedimento * get_top_procedure();
+Entry * get_top_subroutine();
 
-void update_proc_params();
+Entry * get_top_procedure();
+
+Entry * get_top_function();
+
+Entry * get_subroutine(char * ident);
+
+Entry * get_function(char * ident);
+
+Entry * get_procedure(char * ident);
+
+void update_subr_params();
 
 const char * generate_mepa_param(Entry * en, ParametroFormal * pf);
 

@@ -271,6 +271,13 @@ procedure {
     return PROCEDURE;
 }
 
+function {
+    simbolo = simb_function;
+    strncpy (Token, yytext, TAM_TOKEN);
+    IMPRIME(Token); fflush(stdout);
+    return FUNCTION;
+}
+
 {numero} {
     simbolo = simb_numero;
     strncpy (Token, yytext, TAM_TOKEN);

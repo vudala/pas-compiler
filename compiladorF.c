@@ -64,9 +64,12 @@ void print_tabela_simbolos()
             VariavelSimples * vs = (VariavelSimples *) en->element;
             printf("VS %s tipo %d %d %d\n", en->identifier, vs->type, en->addr.nl, en->addr.offset);
         }
-        else if (en->category == cate_proc) {
-            Procedimento * p = (Procedimento *) en->element;
-            printf("P %s %d\n", en->identifier, en->addr.nl);
+        else if (en->category == cate_subr) {
+            Subrotina * subr = (Subrotina *) en->element;
+            if (subr->has_ret)
+                printf("F %s %d ret %d\n", en->identifier, en->addr.nl, subr->ret_type);
+            else
+                printf("P %s %d\n", en->identifier, en->addr.nl);
         }
         else if (en->category == cate_pf) {
             ParametroFormal * pf = (ParametroFormal *) en->element;
@@ -112,16 +115,18 @@ void push_symbol(int category)
 
         ne->element = (void*) vs;
     }
-    else if (category == cate_proc) {
-        Procedimento * p = malloc(sizeof(Procedimento));
-        must_alloc(p, __func__);
+    else if (category == cate_subr) {
+        Subrotina * subr = malloc(sizeof(Subrotina));
+        must_alloc(subr, __func__);
 
-        p->n_params = 0;
-        p->n_rotulo = *((int*) get_top_label()->v);
+        subr->has_ret = 0;
+        subr->ret_type = tipo_indefinido;
+        subr->n_params = 0;
+        subr->n_rotulo = *((int*) get_top_label()->v);
 
-        ne->addr.offset = -1;
+        ne->addr.offset = -99;
 
-        ne->element = (void*) p;
+        ne->element = (void*) subr;
     }
     else if (category == cate_pf) {
         ParametroFormal * pf = malloc(sizeof(ParametroFormal));
@@ -144,10 +149,10 @@ void entry_destroy(void * ptr)
     else if (ent->category == cate_pf) {
         free(ent->element);
     }
-    else if (ent->category == cate_proc) {
-        Procedimento * p = (Procedimento*) ent->element;
-        free(p->params);
-        free(p);
+    else if (ent->category == cate_subr) {
+        Subrotina * subr = (Subrotina*) ent->element;
+        free(subr->params);
+        free(subr);
     }
 
     free(ent->identifier);
@@ -334,45 +339,120 @@ void destroy_block_entries(int nl)
 }
 
 
-Procedimento * get_top_procedure()
+Entry * get_top_subroutine()
 {
     Stack * el = Symbol_Table;
     if (!el)
         return NULL;
 
     Entry * en = (Entry *) el->v;
-    while(el && en && en->category != cate_proc) {
+    while (el && en && en->category != cate_subr) {
         en = (Entry *) el->v;
         el = el->prev;
     }
 
-    if (en)
-        return (Procedimento *) en->element;
+    return en;
+}
+
+
+Entry * get_top_function()
+{
+    Stack * el = Symbol_Table;
+    if (!el)
+        return NULL;
+
+    Entry * en = (Entry *) el->v;
+    while(el && en) {
+        if (en->category == cate_subr) {
+            Subrotina * subr = (Subrotina *) en->element;
+            if (subr->has_ret)
+                return en;
+        }
+
+        en = (Entry *) el->v;
+        el = el->prev;
+    }
 
     return NULL;
 }
 
 
-void update_proc_params()
+Entry * get_top_procedure()
 {
-    Procedimento * p = get_top_procedure();
-    if (!p)
+    Stack * el = Symbol_Table;
+    if (!el)
+        return NULL;
+
+    Entry * en = (Entry *) el->v;
+    while(el && en) {
+        if (en->category == cate_subr) {
+            Subrotina * subr = (Subrotina *) en->element;
+            if (!subr->has_ret)
+                return en;
+        }
+
+        en = (Entry *) el->v;
+        el = el->prev;
+    }
+
+    return NULL;
+}
+
+
+Entry * get_subroutine(char * ident)
+{
+    Entry * en = get_entry(ident);
+    if (en && en->category == cate_subr)
+        return en;
+    return NULL;
+}
+
+
+Entry * get_procedure(char * ident)
+{
+    Entry * en = get_subroutine(ident);
+    if (en) {
+        Subrotina * subr = (Subrotina *) en->element;
+        if (!subr->has_ret)
+            return en;
+    }
+    return NULL;
+}
+
+
+Entry * get_function(char * ident)
+{
+    Entry * en = get_subroutine(ident);
+    if (en) {
+        Subrotina * subr = (Subrotina *) en->element;
+        if (subr->has_ret)
+            return en;
+    }
+    return NULL;
+}
+
+
+void update_subr_params()
+{
+    Entry * en = get_top_subroutine();
+    if (!en)
         trigger_error("no procedure to update");
 
-    p->params = malloc(sizeof(ParametroFormal) * p->n_params);
-    must_alloc(p->params, __func__);
+    Subrotina * subr = (Subrotina *) en->element;
+    subr->params = malloc(sizeof(ParametroFormal) * subr->n_params);
+    must_alloc(subr->params, __func__);
 
     Stack * el = Symbol_Table;
-    Entry * en = (Entry *) el->v;
+    en = (Entry *) el->v;
 
-    int i = p->n_params;
+    int i = subr->n_params;
     int offs_c = -4;
     while(el && en && i--) {
         ParametroFormal * pf = (ParametroFormal *) en->element;
         if (!pf)
             trigger_error("unknwon param");
         
-        memcpy(&(p->params[i]), pf, sizeof(ParametroFormal));
+        memcpy(&(subr->params[i]), pf, sizeof(ParametroFormal));
 
         en->addr.offset = offs_c--;
         el = el->prev;
@@ -381,7 +461,7 @@ void update_proc_params()
     }
 
     if (i != -1)
-        trigger_error("unable to fill all params of procedure");
+        trigger_error("unable to fill all params of subroutine");
 }
 
 
