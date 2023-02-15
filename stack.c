@@ -86,3 +86,15 @@ Stack * top(Stack * base)
     }
     return top_el;
 }
+
+
+int size(Stack * base)
+{
+    int cnt = 0;
+    Stack * el = base;
+    while(el) {
+        cnt++;
+        el = el->prev;
+    }
+    return cnt;
+}

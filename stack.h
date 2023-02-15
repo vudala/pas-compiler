@@ -16,4 +16,6 @@ void pop_n(Stack ** base, unsigned int n);
 
 Stack * top(Stack * base);
 
+int size(Stack * base);
+
 #endif

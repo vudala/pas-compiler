@@ -32,10 +32,10 @@ void generate_code(int rot, char* comando)
         fp = fopen ("MEPA", "w");
 
     if (rot == -1) {
-        fprintf(fp, "     %s\n", comando); fflush(fp);
+        fprintf(fp, "    %s\n", comando); fflush(fp);
     }
     else {
-        fprintf(fp, "R%.2d: %s \n", rot, comando); fflush(fp);
+        fprintf(fp, "R%.2d:%s \n", rot, comando); fflush(fp);
     }
 }
 
@@ -503,13 +503,13 @@ const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2)
 
 void chpr_subroutine(Subrotina * subr)
 {
-    sprintf(aux, "CHPR R%.2d, %d", subr->n_rotulo, nivel_lexico);
+    sprintf(aux, "CHPR R%.2d,%d", subr->n_rotulo, nivel_lexico);
     generate_code(-1, aux);
 }
 
 
 void rtpr_subroutine(Subrotina * subr)
 {
-    sprintf(aux, "RTPR %d, %d", nivel_lexico, subr->n_params);
+    sprintf(aux, "RTPR %d,%d", nivel_lexico, subr->n_params);
     generate_code(-1, aux);
 }
