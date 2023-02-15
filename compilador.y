@@ -1,8 +1,3 @@
-
-// Testar se funciona corretamente o empilhamento de parï¿½metros
-// passados por valor ou por referï¿½ncia.
-
-
 %{
 #include <stdio.h>
 #include <ctype.h>
@@ -14,13 +9,12 @@
 
 int num_vars_declaradas, nivel_lexico = 0, offset;
 int write_trigger = 0, read_trigger = 0;
-char str_aux[100], ident_aux[100];
+char str_aux[100], ident_aux[100], atrib_aux[100];
 extern Stack * Symbol_Table;
 Stack * DMEM_Stack = NULL;
 
 
 int param_index = -1;
-int ret = -1;
 char * curr_subr_ident = NULL;
 Subrotina * curr_subr = NULL;
 
@@ -97,7 +91,7 @@ declara_vars:
     declara_vars lista_id_var DOIS_PONTOS tipo
     {
         // ir ate a tabela de simbolos e atualizar o tipo das variaveis recem alocadas
-        update_types(cate_vs, 0, Token);
+        update_types(cate_vs, 0, $4);
     }
     PONTO_E_VIRGULA |
 ;
@@ -136,7 +130,18 @@ parte_declara_subrotinas:
     }
     PONTO_E_VIRGULA |
     parte_declara_subrotinas
+    {
+        sprintf(str_aux, "DSVS R%.2d", create_label());
+        generate_code(-1, str_aux);
+    }
     declara_func
+    {   
+        int * rot = (int*) get_top_label()->v;
+        generate_code(*rot, "NADA");
+
+        destroy_labels(1);
+        nivel_lexico -= 1;
+    }
     PONTO_E_VIRGULA |
 ;
 
@@ -158,11 +163,7 @@ declara_proced:
         if (!en)
             trigger_error("no procedure on top");
 
-        Subrotina * p = (Subrotina *) en->element;
-
-        sprintf(str_aux, "RTPR %d, %d", nivel_lexico, p->n_params);
-
-        generate_code(-1, str_aux);
+        rtpr_subroutine((Subrotina *) en->element);
 
         destroy_labels(1);
     }
@@ -179,21 +180,36 @@ declara_func:
 
         nivel_lexico += 1;
 
+        // salva o nome do procedimento que está sendo declarado para checar atribuicao de retorno
         curr_subr_ident = malloc(strlen(Token));
+        must_alloc(curr_subr_ident, "declara func");
+
         strcpy(curr_subr_ident, Token);
     }
     param_formais DOIS_PONTOS
-    tipo {
+    tipo
+    {
         // atualizar o tipo de retorno da funcao recem declarada
         Entry * en = get_top_subroutine();
+        if (!en)
+            trigger_error("no function on top");
+
         Subrotina * subr = (Subrotina *) en->element;
 
         subr->has_ret = 1;
-        subr->ret_type = $5;
+        subr->ret_type = $6;
     } 
     PONTO_E_VIRGULA
     bloco
     {
+        Entry * en = get_top_function();
+        if (!en)
+            trigger_error("no function on top");
+
+        rtpr_subroutine((Subrotina *) en->element);
+
+        destroy_labels(1);
+
         free(curr_subr_ident);
         curr_subr_ident = NULL;
     }
@@ -212,11 +228,11 @@ parte_param_formais:
 sec_param_formais:
     VAR lista_ident_params DOIS_PONTOS tipo
         {
-            update_types(cate_pf, 1, Token);
+            update_types(cate_pf, 1, $4);
         } |
     lista_ident_params DOIS_PONTOS tipo
         {
-            update_types(cate_pf, 0, Token);
+            update_types(cate_pf, 0, $3);
         }
 ;
 
@@ -249,7 +265,7 @@ lista_ident_params :
 ;
 
 tipo:
-    INTEIRO | BOOLEANO
+    INTEIRO {$$ = tipo_inteiro;} | BOOLEANO {$$ = tipo_booleano;}
 ;
 
 comando_composto: 
@@ -270,7 +286,7 @@ comando:
 ;
 
 linha_comando:
-    IDENT {strcpy(ident_aux, Token);} complemento_linha 
+    IDENT {strcpy(atrib_aux, Token);} complemento_linha 
 ;
 
 complemento_linha:
@@ -278,10 +294,10 @@ complemento_linha:
     ATRIBUICAO expressao
     {
         // armazenar valor da expressao que foi calculada
-        Entry * en = get_entry(ident_aux);
+        Entry * en = get_entry(atrib_aux);
 
         if (!en)
-            trigger_error("unknown variable");
+            trigger_error("unknown symbol");
 
         if (en->category == cate_vs) {
             VariavelSimples * vs = en->element;
@@ -308,8 +324,9 @@ complemento_linha:
         }
         else if (en->category == cate_subr) {
             Subrotina * subr = en->element;
-            if (subr->has_ret && !strcmp(ident_aux, curr_subr_ident)) {
-                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, -4 - subr->n_params);
+            if (subr->has_ret && !strcmp(atrib_aux, curr_subr_ident)) {
+                sprintf(str_aux, "ARMZ %d, %d", nivel_lexico, -4 - subr->n_params);
+                generate_code(-1, str_aux);
             }
             else {
                 trigger_error("you can only assign values to variables");                
@@ -321,14 +338,14 @@ complemento_linha:
     } |
     // chamada de procedimentos com parametros
     {
-        if (strcmp("write", ident_aux) == 0) {
+        if (strcmp("write", atrib_aux) == 0) {
             write_trigger = 1;
         }
-        else if (strcmp("read", ident_aux) == 0) {
+        else if (strcmp("read", atrib_aux) == 0) {
             read_trigger = 1;
         }
         else {
-            Entry * en = get_procedure(ident_aux);
+            Entry * en = get_procedure(atrib_aux);
         
             if (!en)
                 trigger_error("unknown procedure");
@@ -351,23 +368,21 @@ complemento_linha:
             if (param_index < curr_subr->n_params)
                 trigger_error("too few arguments");
             
-            sprintf(str_aux, "CHPR R%.2d, %d", curr_subr->n_rotulo, nivel_lexico);
-            generate_code(-1, str_aux);
+            chpr_subroutine(curr_subr);
 
             curr_subr = NULL;
         }
     } |
     // chamada de procedimento sem parametros
     {
-        Entry * en = get_procedure(ident_aux);
+        Entry * en = get_procedure(atrib_aux);
         
         if (!en)
             trigger_error("unknown procedure");
 
         Subrotina * proc = (Subrotina *) en->element;
 
-        sprintf(str_aux, "CHPR R%.2d, %d", proc->n_rotulo, nivel_lexico);
-        generate_code(-1, str_aux);
+        chpr_subroutine(proc);
     }
 ;
 
@@ -590,87 +605,7 @@ termo:
 ;
 
 fator:
-    IDENT
-    {
-        // procurar o simbolo na tabela e empilhar o valor
-        Entry * en = get_entry(Token);
-
-        if (!en)
-            trigger_error("unknown variable");
-
-        if (curr_subr) {                
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = (VariavelSimples*) en->element;
-
-                if (vs->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
-
-                $$ = vs->type;
-                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                ParametroFormal * pf = (ParametroFormal*) en->element;
-
-                if (pf->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
-
-                $$ = pf->type;
-
-                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_subr) {
-                Subrotina * subr = en->element;
-                if (!subr->has_ret) {
-                    trigger_error("cant use procedures on expressions");
-                }
-            }
-        }
-        else {
-            if (en->category == cate_vs) {
-                VariavelSimples * vs = (VariavelSimples*) en->element;
-
-                $$ = vs->type;
-                if (read_trigger) {
-                    sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-                }
-                else {
-                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-                }
-            
-                generate_code(-1, str_aux);
-            }
-            else if (en->category == cate_pf) {
-                ParametroFormal * pf = (ParametroFormal*) en->element;
-
-                $$ = pf->type;
-
-                ret = $$;
-
-                if (read_trigger) {
-                    if (pf->ref)
-                        sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
-                    else
-                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
-                }
-                else {
-                    if (pf->ref)
-                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
-                    else
-                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
-                }
-            
-                generate_code(-1, str_aux);
-            }
-        }
-    }
-    complemento_fator
-    {$$ = ret;} |
+    IDENT {strcpy(ident_aux, Token);} ident_coringa {$$ = $3;} |
     NUMERO 
         {
             if (curr_subr) {
@@ -758,14 +693,125 @@ fator:
         }
 ;
 
-complemento_fator:
+
+ident_coringa:
+    chamada_func {$$ = $1;} | variavel {$$ = $1;}
+;
+
+
+variavel:
+    {
+        // procurar o simbolo na tabela e empilhar o valor
+        Entry * en = get_entry(ident_aux);
+
+        if (!en)
+            trigger_error("unknown variable");
+
+        if (curr_subr) {                
+            if (en->category == cate_vs) {
+                VariavelSimples * vs = (VariavelSimples*) en->element;
+
+                if (vs->type != curr_subr->params[param_index].type)
+                    trigger_error("invalid param given to procedure");
+
+                $$ = vs->type;
+                
+                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_pf) {
+                ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                if (pf->type != curr_subr->params[param_index].type)
+                    trigger_error("invalid param given to procedure");
+
+                $$ = pf->type;
+
+                const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_subr) {
+                Subrotina * subr = en->element;
+                if (!subr->has_ret) {
+                    if (subr->n_params != 0)
+                        trigger_error("too few arguments");
+
+                    generate_code(-1, "AMEM 1");
+
+                    chpr_subroutine(subr);
+                }
+                else
+                    trigger_error("cant use procedures on expressions");
+            }
+        }
+        else {
+            if (en->category == cate_vs) {
+                VariavelSimples * vs = (VariavelSimples*) en->element;
+
+                $$ = vs->type;
+                if (read_trigger) {
+                    sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                }
+                else {
+                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                }
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_pf) {
+                ParametroFormal * pf = (ParametroFormal*) en->element;
+
+                $$ = pf->type;
+
+                if (read_trigger) {
+                    if (pf->ref)
+                        sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
+                    else
+                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
+                }
+                else {
+                    if (pf->ref)
+                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
+                    else
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
+                }
+            
+                generate_code(-1, str_aux);
+            }
+            else if (en->category == cate_subr) {
+                Subrotina * subr = en->element;
+                if (!subr->has_ret) {
+                    if (subr->n_params != 0)
+                        trigger_error("too few arguments");
+
+                    generate_code(-1, "AMEM 1");
+
+                    chpr_subroutine(subr);
+                }
+                else
+                    trigger_error("cant use procedures on expressions");
+            }
+        }
+    }
+;
+
+
+chamada_func:
     {        
-        Entry * en = get_function(Token);
+        Entry * en = get_function(ident_aux);
         
         if (!en)
             trigger_error("unknown function");
 
         curr_subr = (Subrotina *) en->element;
+
+        param_index = 0;
+
+        generate_code(-1, "AMEM 1");
     }
     ABRE_PARENTESES lista_express_func FECHA_PARENTESES
     {
@@ -775,26 +821,21 @@ complemento_fator:
         if (param_index < curr_subr->n_params)
             trigger_error("too few arguments");
         
-        sprintf(str_aux, "CHPR R%.2d, %d", curr_subr->n_rotulo, nivel_lexico);
-        generate_code(-1, str_aux);
+        chpr_subroutine(curr_subr);
         
         $$ = curr_subr->ret_type;
 
         curr_subr = NULL;
-    } |
+    }
 ;
 
 
 lista_express_func:
     lista_express_func VIRGULA
     expressao
-    {
-        param_index++;
-    } |
+    {param_index++;} |
     expressao
-    {
-        param_index++;
-    }
+    {param_index++;}
 ;
 
 

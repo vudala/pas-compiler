@@ -77,7 +77,7 @@ void push_symbol(int category);
 
 void entry_destroy(void * ptr);
 
-void update_types(int cate, int ref, char * type);
+void update_types(int cate, int ref, int type);
 
 void trigger_error (char* erro);
 
@@ -118,5 +118,9 @@ Entry * get_procedure(char * ident);
 void update_subr_params();
 
 const char * generate_mepa_param(Entry * en, ParametroFormal * pf);
+
+void chpr_subroutine(Subrotina * subr);
+
+void rtpr_subroutine(Subrotina * subr);
 
 #endif

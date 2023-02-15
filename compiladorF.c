@@ -13,6 +13,8 @@
 int Line_Counter = 1;
 Simbolos simbolo;
 
+char aux[100];
+
 char Token[TAM_TOKEN];
 
 // tabela de simbolos
@@ -192,7 +194,7 @@ Entry * get_entry(char * identifier)
 
 
 // atualiza os tipos das variaveis simples recem declaradas
-void update_types(int cate, int ref, char * type)
+void update_types(int cate, int ref, int type)
 {
     Stack * el = Symbol_Table;
     Entry * en = (Entry *) el->v;
@@ -204,7 +206,7 @@ void update_types(int cate, int ref, char * type)
         if (nivel_lexico != en->addr.nl || vs->type != tipo_indefinido)
             return;
 
-        vs->type = get_type_enum(type);
+        vs->type = type;
 
         if (cate == cate_pf) {
             ParametroFormal * pf = (ParametroFormal *) en->element;
@@ -496,4 +498,18 @@ const char * generate_mepa_param(Entry * en1, ParametroFormal * pf2)
     }
 
     return NULL;
+}
+
+
+void chpr_subroutine(Subrotina * subr)
+{
+    sprintf(aux, "CHPR R%.2d, %d", subr->n_rotulo, nivel_lexico);
+    generate_code(-1, aux);
+}
+
+
+void rtpr_subroutine(Subrotina * subr)
+{
+    sprintf(aux, "RTPR %d, %d", nivel_lexico, subr->n_params);
+    generate_code(-1, aux);
 }
