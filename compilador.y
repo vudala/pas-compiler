@@ -365,16 +365,14 @@ complemento_linha:
             push(&PARAM_Stack, par);
         }
     }
-    ABRE_PARENTESES lista_express_subr FECHA_PARENTESES
+    ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
     {
         if (write_trigger || read_trigger) {
             write_trigger = 0;
             read_trigger = 0;
         }
         else {
-            int param_index = *((int*) PARAM_Stack->v);
-            if (param_index > curr_subr->n_params)
-                trigger_error("too many arguments");    
+            int param_index = *((int*) PARAM_Stack->v);  
 
             if (param_index < curr_subr->n_params)
                 trigger_error("too few arguments");
@@ -399,13 +397,16 @@ complemento_linha:
 
         Subrotina * proc = (Subrotina *) en->element;
 
+        if (proc->n_params != 0)
+            trigger_error("too few arguments");
+
         chpr_subroutine(proc);
     }
 ;
 
 
-lista_express_subr:
-    lista_express_subr VIRGULA
+lista_express_proc:
+    lista_express_proc VIRGULA
     {
         if (read_trigger)
             generate_code(-1, "LEIT");
@@ -421,7 +422,8 @@ lista_express_subr:
     {
         if (write_trigger)
             generate_code(-1, "IMPR");
-        else {
+        
+        if (curr_subr) {
             int * par_ind = (int*) PARAM_Stack->v;
             (*par_ind)++;
         }
@@ -441,7 +443,8 @@ lista_express_subr:
     {
         if (write_trigger)
             generate_code(-1, "IMPR");
-        else {
+        
+        if (curr_subr) {
             int * par_ind = (int*) PARAM_Stack->v;
             (*par_ind)++;
         }
@@ -759,7 +762,7 @@ variavel:
                 VariavelSimples * vs = (VariavelSimples*) en->element;
 
                 if (vs->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
+                    trigger_error("invalid param given to subroutine");
 
                 $$ = vs->type;
                 
@@ -772,7 +775,7 @@ variavel:
                 ParametroFormal * pf = (ParametroFormal*) en->element;
 
                 if (pf->type != curr_subr->params[param_index].type)
-                    trigger_error("invalid param given to procedure");
+                    trigger_error("invalid param given to subroutine");
 
                 $$ = pf->type;
 
@@ -788,7 +791,7 @@ variavel:
                         trigger_error("too few arguments");
 
                     if (subr->ret_type != curr_subr->params[param_index].type || curr_subr->params[param_index].ref)
-                        trigger_error("invalid param given to procedure");
+                        trigger_error("invalid param given to subroutine");
 
                     generate_code(-1, "AMEM 1");
 
@@ -867,7 +870,7 @@ chamada_func:
 
         generate_code(-1, "AMEM 1");
     }
-    ABRE_PARENTESES lista_express_subr FECHA_PARENTESES
+    ABRE_PARENTESES lista_express_func FECHA_PARENTESES
     {
         int param_index = *((int*) PARAM_Stack->v);  
 
@@ -878,14 +881,49 @@ chamada_func:
         
         $$ = curr_subr->ret_type;
 
+        Subrotina * subr = (Subrotina *) SUBR_Stack->v;
+
         pop(&SUBR_Stack);
         if (SUBR_Stack)
-            curr_subr = SUBR_Stack->v;
+            curr_subr = (Subrotina *) SUBR_Stack->v;
         else
             curr_subr = NULL;
 
         pop(&PARAM_Stack);
+
+        // caso a chamada de funcao esteja sendo passada como parametro para outra subrotina
+        if (curr_subr) {
+            param_index = *((int*) PARAM_Stack->v); 
+            if (subr->ret_type != curr_subr->params[param_index].type || curr_subr->params[param_index].ref)
+                trigger_error("invalid param given to subroutine");
+        }
     }
+;
+
+lista_express_func:
+    lista_express_func VIRGULA
+    {
+        int * par_ind = (int*) PARAM_Stack->v;
+    
+        if (*par_ind + 1 > curr_subr->n_params)
+            trigger_error("too many arguments");
+    }
+    expressao
+    {
+        int * par_ind = (int*) PARAM_Stack->v;
+        (*par_ind)++;
+    } |
+    {
+        int * par_ind = (int*) PARAM_Stack->v;
+    
+        if (*par_ind + 1 > curr_subr->n_params)
+            trigger_error("too many arguments");
+    }
+    expressao
+    {
+        int * par_ind = (int*) PARAM_Stack->v;
+        (*par_ind)++;
+    } |
 ;
 
 
