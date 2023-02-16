@@ -12,9 +12,9 @@ int write_trigger = 0, read_trigger = 0;
 char str_aux[100], ident_aux[100], atrib_aux[100];
 extern Stack * Symbol_Table;
 Stack * DMEM_Stack = NULL;
+Stack * SUBR_Stack = NULL;
+Stack * PARAM_Stack = NULL;
 
-
-int param_index = -1;
 char * curr_subr_ident = NULL;
 Subrotina * curr_subr = NULL;
 
@@ -357,17 +357,22 @@ complemento_linha:
                 trigger_error("unknown procedure");
 
             curr_subr = (Subrotina *) en->element;
-        }
+            push(&SUBR_Stack, curr_subr);
 
-        param_index = 0;
+            int * par = malloc(sizeof(int));
+            must_alloc(par, "chamada func");
+            *par = 0;
+            push(&PARAM_Stack, par);
+        }
     }
-    ABRE_PARENTESES lista_express_proc FECHA_PARENTESES
+    ABRE_PARENTESES lista_express_subr FECHA_PARENTESES
     {
         if (write_trigger || read_trigger) {
             write_trigger = 0;
             read_trigger = 0;
         }
         else {
+            int param_index = *((int*) PARAM_Stack->v);
             if (param_index > curr_subr->n_params)
                 trigger_error("too many arguments");    
 
@@ -376,7 +381,13 @@ complemento_linha:
             
             chpr_subroutine(curr_subr);
 
-            curr_subr = NULL;
+            pop(&SUBR_Stack);
+            if (SUBR_Stack)
+                curr_subr = SUBR_Stack->v;
+            else
+                curr_subr = NULL;
+
+            pop(&PARAM_Stack);
         }
     } |
     // chamada de procedimento sem parametros
@@ -393,29 +404,47 @@ complemento_linha:
 ;
 
 
-lista_express_proc:
-    lista_express_proc VIRGULA
+lista_express_subr:
+    lista_express_subr VIRGULA
     {
         if (read_trigger)
             generate_code(-1, "LEIT");
+
+        if (curr_subr) {
+            int * par_ind = (int*) PARAM_Stack->v;
+        
+            if (*par_ind + 1 > curr_subr->n_params)
+                trigger_error("too many arguments");
+        }
     }
     expressao
     {
         if (write_trigger)
             generate_code(-1, "IMPR");
-
-        param_index++;
+        else {
+            int * par_ind = (int*) PARAM_Stack->v;
+            (*par_ind)++;
+        }
     } |
     {
         if (read_trigger)
             generate_code(-1, "LEIT");
+        
+        if (curr_subr) {
+            int * par_ind = (int*) PARAM_Stack->v;
+        
+            if (*par_ind + 1 > curr_subr->n_params)
+                trigger_error("too many arguments");
+        }
     }
     expressao
     {
         if (write_trigger)
             generate_code(-1, "IMPR");
-
-        param_index++;
+        else {
+            int * par_ind = (int*) PARAM_Stack->v;
+            (*par_ind)++;
+        }
     } |
 ;
 
@@ -611,10 +640,12 @@ termo:
 ;
 
 fator:
-    IDENT {strcpy(ident_aux, Token);} ident_coringa {$$ = $3;} |
+    IDENT {strcpy(ident_aux, Token);} ident_complemento {$$ = $3;} |
     NUMERO 
         {
             if (curr_subr) {
+                int param_index = *((int*) PARAM_Stack->v);
+
                 if (tipo_inteiro != curr_subr->params[param_index].type)
                     trigger_error("invalid arg type");
 
@@ -632,6 +663,8 @@ fator:
     TRUE 
         {
             if (curr_subr) {
+                int param_index = *((int*) PARAM_Stack->v);
+                
                 if (tipo_booleano != curr_subr->params[param_index].type)
                     trigger_error("invalid arg type");
 
@@ -649,6 +682,8 @@ fator:
     FALSE 
         {
             if (curr_subr) {
+                int param_index = *((int*) PARAM_Stack->v);
+
                 if (tipo_booleano != curr_subr->params[param_index].type)
                     trigger_error("invalid arg type");
 
@@ -666,6 +701,8 @@ fator:
     ABRE_PARENTESES expressao FECHA_PARENTESES
         {
             if (curr_subr) {
+                int param_index = *((int*) PARAM_Stack->v);
+
                 if ($2 != curr_subr->params[param_index].type)
                     trigger_error("invalid arg type");
 
@@ -684,6 +721,8 @@ fator:
                 trigger_error("invalid operation");
 
             if (curr_subr) {
+                int param_index = *((int*) PARAM_Stack->v);
+
                 if (tipo_booleano != curr_subr->params[param_index].type)
                     trigger_error("invalid arg type");
 
@@ -700,7 +739,7 @@ fator:
 ;
 
 
-ident_coringa:
+ident_complemento:
     chamada_func {$$ = $1;} | variavel {$$ = $1;}
 ;
 
@@ -713,7 +752,9 @@ variavel:
         if (!en)
             trigger_error("unknown variable");
 
-        if (curr_subr) {                
+        if (curr_subr) {
+            int param_index = *((int*) PARAM_Stack->v);
+
             if (en->category == cate_vs) {
                 VariavelSimples * vs = (VariavelSimples*) en->element;
 
@@ -745,6 +786,9 @@ variavel:
                 if (subr->has_ret) {
                     if (subr->n_params != 0)
                         trigger_error("too few arguments");
+
+                    if (subr->ret_type != curr_subr->params[param_index].type || curr_subr->params[param_index].ref)
+                        trigger_error("invalid param given to procedure");
 
                     generate_code(-1, "AMEM 1");
 
@@ -814,15 +858,18 @@ chamada_func:
             trigger_error("unknown function");
 
         curr_subr = (Subrotina *) en->element;
+        push(&SUBR_Stack, curr_subr);
 
-        param_index = 0;
+        int * par = malloc(sizeof(int));
+        must_alloc(par, "chamada func");
+        *par = 0;
+        push(&PARAM_Stack, par);
 
         generate_code(-1, "AMEM 1");
     }
-    ABRE_PARENTESES lista_express_func FECHA_PARENTESES
+    ABRE_PARENTESES lista_express_subr FECHA_PARENTESES
     {
-        if (param_index > curr_subr->n_params)
-            trigger_error("too many arguments");    
+        int param_index = *((int*) PARAM_Stack->v);  
 
         if (param_index < curr_subr->n_params)
             trigger_error("too few arguments");
@@ -831,17 +878,14 @@ chamada_func:
         
         $$ = curr_subr->ret_type;
 
-        curr_subr = NULL;
+        pop(&SUBR_Stack);
+        if (SUBR_Stack)
+            curr_subr = SUBR_Stack->v;
+        else
+            curr_subr = NULL;
+
+        pop(&PARAM_Stack);
     }
-;
-
-
-lista_express_func:
-    lista_express_func VIRGULA
-    expressao
-    {param_index++;} |
-    expressao
-    {param_index++;}
 ;
 
 

@@ -97,8 +97,8 @@ void push_symbol(int category)
     ne->category = category;
 
     Stack * el = Symbol_Table;
-    while(el != NULL){
-        Entry* entry = (Entry*) el->v;
+    while(el) {
+        Entry * entry = (Entry *) el->v;
 
         if(entry->addr.nl != nivel_lexico)
             break;
