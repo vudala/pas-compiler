@@ -311,7 +311,7 @@ complemento_linha:
             if (vs->type != $2)
                 trigger_error("type mismatch");
 
-            sprintf(str_aux, "ARMZ %d,%d", en->addr.nl, en->addr.offset);
+            sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
         
             generate_code(-1, str_aux);
         }
@@ -322,16 +322,16 @@ complemento_linha:
                 trigger_error("type mismatch");
 
             if (pf->ref)
-                sprintf(str_aux, "ARMI %d,%d", en->addr.nl, en->addr.offset);
+                sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
             else
-                sprintf(str_aux, "ARMZ %d,%d", en->addr.nl, en->addr.offset);
+                sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
         
             generate_code(-1, str_aux);
         }
         else if (en->category == cate_subr) {
             Subrotina * subr = en->element;
             if (subr->has_ret && !strcmp(atrib_aux, curr_subr_ident)) {
-                sprintf(str_aux, "ARMZ %d,%d", nivel_lexico, -4 - subr->n_params);
+                sprintf(str_aux, "ARMZ %d, %d", nivel_lexico, -4 - subr->n_params);
                 generate_code(-1, str_aux);
             }
             else {
@@ -767,7 +767,7 @@ variavel:
                 $$ = vs->type;
                 
                 const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d,%d", to_write, en->addr.nl, en->addr.offset);
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
             
                 generate_code(-1, str_aux);
             }
@@ -780,7 +780,7 @@ variavel:
                 $$ = pf->type;
 
                 const char * to_write = generate_mepa_param(en, &(curr_subr->params[param_index]));
-                sprintf(str_aux, "%s %d,%d", to_write, en->addr.nl, en->addr.offset);
+                sprintf(str_aux, "%s %d, %d", to_write, en->addr.nl, en->addr.offset);
             
                 generate_code(-1, str_aux);
             }
@@ -807,10 +807,10 @@ variavel:
 
                 $$ = vs->type;
                 if (read_trigger) {
-                    sprintf(str_aux, "ARMZ %d,%d", en->addr.nl, en->addr.offset);
+                    sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
                 }
                 else {
-                    sprintf(str_aux, "CRVL %d,%d", en->addr.nl, en->addr.offset);
+                    sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
                 }
             
                 generate_code(-1, str_aux);
@@ -822,15 +822,15 @@ variavel:
 
                 if (read_trigger) {
                     if (pf->ref)
-                        sprintf(str_aux, "ARMI %d,%d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "ARMI %d, %d", en->addr.nl, en->addr.offset);
                     else
-                        sprintf(str_aux, "ARMZ %d,%d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "ARMZ %d, %d", en->addr.nl, en->addr.offset);
                 }
                 else {
                     if (pf->ref)
-                        sprintf(str_aux, "CRVI %d,%d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "CRVI %d, %d", en->addr.nl, en->addr.offset);
                     else
-                        sprintf(str_aux, "CRVL %d,%d", en->addr.nl, en->addr.offset);
+                        sprintf(str_aux, "CRVL %d, %d", en->addr.nl, en->addr.offset);
                 }
             
                 generate_code(-1, str_aux);
