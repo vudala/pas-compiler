@@ -17,7 +17,7 @@ pulo_linha [\n]
 
 descarte [\t ]+
 
-ident [a-zA-Z][a-zA-Z0-9]*
+ident [a-zA-Z_][a-zA-Z0-9_]*
 
 numero [0-9]+
 
@@ -31,7 +31,7 @@ comentario "(*".*"*)"
 
 {comentario}
 
-program {
+(?i:program) {
     simbolo = simb_program;
     strncpy (Token, yytext, TAM_TOKEN);
     IMPRIME(Token); fflush(stdout);
@@ -276,6 +276,13 @@ function {
     strncpy (Token, yytext, TAM_TOKEN);
     IMPRIME(Token); fflush(stdout);
     return FUNCTION;
+}
+
+forward {
+    simbolo = simb_forward;
+    strncpy (Token, yytext, TAM_TOKEN);
+    IMPRIME(Token); fflush(stdout);
+    return FORWARD;
 }
 
 {numero} {

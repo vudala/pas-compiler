@@ -15,7 +15,7 @@ typedef enum simbolos {
     simb_if, simb_then, simb_else, simb_while, simb_do,
     simb_menor, simb_maior, simb_menor_igual, simb_maior_igual,
     simb_igual, simb_diferente, simb_and, simb_not, simb_or,
-    simb_true, simb_false, simb_procedure, simb_function
+    simb_true, simb_false, simb_procedure, simb_function, simb_forward
 } Simbolos; 
 
 
@@ -48,6 +48,7 @@ typedef struct parametro_formal {
 } ParametroFormal;
 
 typedef struct subrotina {
+    int init;
     int n_rotulo;
     int n_params;
     int has_ret;
@@ -122,5 +123,7 @@ const char * generate_mepa_param(Entry * en, ParametroFormal * pf);
 void chpr_subroutine(Subrotina * subr);
 
 void rtpr_subroutine(Subrotina * subr);
+
+Entry * get_forwarded_subr(char * ident);
 
 #endif

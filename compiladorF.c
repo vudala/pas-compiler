@@ -20,6 +20,9 @@ char Token[TAM_TOKEN];
 // tabela de simbolos
 Stack * Symbol_Table = NULL;
 
+// tabela de forward
+extern Stack * FORW_Stack;
+
 // controle de rotulos
 int Label_Counter = 0;
 Stack * Labels = NULL;
@@ -100,11 +103,20 @@ void push_symbol(int category)
     while(el) {
         Entry * entry = (Entry *) el->v;
 
-        if(entry->addr.nl != nivel_lexico)
-            break;
-
-        if(strcmp(entry->identifier, ne->identifier) == 0)
-            trigger_error("identificador ja declarado");
+        if(entry->addr.nl == nivel_lexico) {
+            if(strcmp(entry->identifier, ne->identifier) == 0) {
+                if (category == cate_subr) {
+                    Subrotina * subr = entry->element;
+                    if (subr->init)
+                        trigger_error("identificador ja declarado");
+                    else
+                        return;
+                }
+                else {
+                    trigger_error("identificador ja declarado");
+                }
+            }   
+        }
         
         el = el->prev;
     }
@@ -121,10 +133,11 @@ void push_symbol(int category)
         Subrotina * subr = malloc(sizeof(Subrotina));
         must_alloc(subr, __func__);
 
+        subr->init = 0;
         subr->has_ret = 0;
         subr->ret_type = tipo_indefinido;
         subr->n_params = 0;
-        subr->n_rotulo = *((int*) get_top_label()->v);
+        subr->n_rotulo = Label_Counter++;
 
         ne->addr.offset = -99;
 
@@ -512,4 +525,28 @@ void rtpr_subroutine(Subrotina * subr)
 {
     sprintf(aux, "RTPR %d, %d", nivel_lexico, subr->n_params);
     generate_code(-1, aux);
+}
+
+
+Entry * get_forwarded_subr(char * ident)
+{
+    Stack * el = FORW_Stack;
+    Entry * en = (Entry*) el->v;
+
+    while (el && en) {
+        if (strcmp(ident, en->identifier) == 0)
+            return en;
+
+        el = el->prev;
+        if (el)
+            en = (Entry*) el->v;
+    }
+
+    return NULL;
+}
+
+
+int compare_params(ParametroFormal * p1, ParametroFormal * p2)
+{
+    return 1;
 }

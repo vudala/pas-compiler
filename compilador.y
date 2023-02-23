@@ -9,14 +9,16 @@
 
 int num_vars_declaradas, nivel_lexico = 0, offset;
 int write_trigger = 0, read_trigger = 0;
-char str_aux[100], ident_aux[100], atrib_aux[100];
+char str_aux[100], ident_aux[100], atrib_aux[100], subr_aux[100];
 extern Stack * Symbol_Table;
 Stack * DMEM_Stack = NULL;
 Stack * SUBR_Stack = NULL;
 Stack * PARAM_Stack = NULL;
+Stack * FORW_Stack = NULL;
 
 char * curr_subr_ident = NULL;
 Subrotina * curr_subr = NULL;
+Subrotina * subr_declr = NULL;
 
 %}
 
@@ -29,7 +31,7 @@ Subrotina * curr_subr = NULL;
 %token MENOR MAIOR IGUAL DIFERENTE AND OR NOT
 %token MENOR_IGUAL MAIOR_IGUAL
 %token TRUE FALSE
-%token PROCEDURE FUNCTION
+%token PROCEDURE FUNCTION FORWARD
 
 %nonassoc LOWER_THAN_ELSE
 %nonassoc TOK
@@ -46,9 +48,11 @@ programa:
     {generate_code(-1, "PARA");}
 ;
 
+
 main_params:
     ABRE_PARENTESES lista_idents FECHA_PARENTESES |
 ;
+
 
 lista_idents:
     lista_idents VIRGULA IDENT |
@@ -72,6 +76,7 @@ bloco:
     }
 ;
 
+
 ///////////// DECLARACAO DE VARIAVEIS
 parte_declara_vars:   
     {
@@ -93,6 +98,7 @@ parte_declara_vars:
     } |
 ;
 
+
 declara_vars:
     declara_vars lista_id_var DOIS_PONTOS tipo
     {
@@ -102,6 +108,7 @@ declara_vars:
     PONTO_E_VIRGULA |
 ;
 /////////////
+
 
 lista_id_var:   
     lista_id_var VIRGULA IDENT
@@ -120,70 +127,30 @@ lista_id_var:
     }
 ;
 
+
 parte_declara_subrotinas:
-    parte_declara_subrotinas
-    {
-        sprintf(str_aux, "DSVS R%.2d", create_label());
-        generate_code(-1, str_aux);
-    }
-    declara_proced
-    {   
-        int * rot = (int*) get_top_label()->v;
-        generate_code(*rot, "NADA");
-
-        destroy_labels(1);
-        nivel_lexico -= 1;
-    }
-    PONTO_E_VIRGULA |
-    parte_declara_subrotinas
-    {
-        sprintf(str_aux, "DSVS R%.2d", create_label());
-        generate_code(-1, str_aux);
-    }
-    declara_func
-    {   
-        int * rot = (int*) get_top_label()->v;
-        generate_code(*rot, "NADA");
-
-        destroy_labels(1);
-        nivel_lexico -= 1;
-    }
-    PONTO_E_VIRGULA |
+    parte_declara_subrotinas declara_proced PONTO_E_VIRGULA |
+    parte_declara_subrotinas declara_func PONTO_E_VIRGULA |
 ;
+
 
 declara_proced:
     PROCEDURE IDENT
-        {
-            sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
-
-            generate_code(create_label(), str_aux);
-
-            push_symbol(cate_subr);
-
-            nivel_lexico += 1;
-        }
-    param_formais PONTO_E_VIRGULA
-    bloco
     {
-        Entry * en = get_top_procedure();
-        if (!en)
-            trigger_error("no procedure on top");
-
-        rtpr_subroutine((Subrotina *) en->element);
-
-        destroy_labels(1);
+        push_symbol(cate_subr);
+        strcpy(subr_aux, Token);
+        nivel_lexico += 1;
     }
+    param_formais PONTO_E_VIRGULA
+    complemento_declara_subr
 ;
+
 
 declara_func:
     FUNCTION IDENT
-    {
-        sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
-
-        generate_code(create_label(), str_aux);
-
+    {   //crlb
         push_symbol(cate_subr);
-
+        strcpy(subr_aux, Token);
         nivel_lexico += 1;
 
         // salva o nome do procedimento que está sendo declarado para checar atribuicao de retorno
@@ -206,30 +173,74 @@ declara_func:
         subr->ret_type = $6;
     } 
     PONTO_E_VIRGULA
+    complemento_declara_subr
+    {
+        if (curr_subr_ident) {
+            free(curr_subr_ident);
+            curr_subr_ident = NULL;
+        }
+    }
+;
+
+
+complemento_declara_subr:
+    {
+        sprintf(str_aux, "DSVS R%.2d", create_label());
+        generate_code(-1, str_aux);
+
+        Entry * en = get_forwarded_subr(subr_aux);
+        Subrotina * subr = NULL;
+        if (en) {   	
+            subr = en->element;
+        }
+        else {
+            en = get_subroutine(subr_aux);
+            subr = (Subrotina *) en->element;
+        }
+
+        sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
+
+        generate_code(subr->n_rotulo, str_aux);
+    }
     bloco
     {
-        Entry * en = get_top_function();
-        if (!en)
-            trigger_error("no function on top");
+        Entry * en = get_subroutine(subr_aux);
+        Subrotina * subr = (Subrotina *) en->element;
+        subr->init = 1;
 
-        rtpr_subroutine((Subrotina *) en->element);
+        rtpr_subroutine(subr);
+
+        int * rot = (int*) get_top_label()->v;
+        generate_code(*rot, "NADA");
 
         destroy_labels(1);
 
-        free(curr_subr_ident);
-        curr_subr_ident = NULL;
+        nivel_lexico -= 1;
+    } |
+    FORWARD
+    {
+        destroy_block_entries(nivel_lexico);
+
+        Entry * en = get_top_subroutine();
+        push(&FORW_Stack, en);
+        pop(&Symbol_Table);
+
+        nivel_lexico -= 1;
     }
 ;
+
 
 param_formais: 
     ABRE_PARENTESES parte_param_formais FECHA_PARENTESES
     {update_subr_params();} |
 ;
 
+
 parte_param_formais:
     parte_param_formais PONTO_E_VIRGULA sec_param_formais |
     sec_param_formais |
 ;
+
 
 sec_param_formais:
     VAR lista_ident_params DOIS_PONTOS tipo
@@ -241,6 +252,7 @@ sec_param_formais:
             update_types(cate_pf, 0, $3);
         }
 ;
+
 
 lista_ident_params :
     lista_ident_params VIRGULA IDENT
@@ -344,7 +356,7 @@ complemento_linha:
     } |
     // chamada de procedimentos com parametros
     {
-        if (strcmp("write", atrib_aux) == 0) {
+        if (strcmp("write", atrib_aux) == 0 || strcmp("writeln", atrib_aux) == 0) {
             write_trigger = 1;
         }
         else if (strcmp("read", atrib_aux) == 0) {
@@ -353,10 +365,14 @@ complemento_linha:
         else {
             Entry * en = get_procedure(atrib_aux);
         
-            if (!en)
-                trigger_error("unknown procedure");
+            if (!en) {
+                en = get_forwarded_subr(atrib_aux);
+                if (!en)
+                    trigger_error("unknown procedure");
+            }
 
             curr_subr = (Subrotina *) en->element;
+
             push(&SUBR_Stack, curr_subr);
 
             int * par = malloc(sizeof(int));
@@ -392,8 +408,11 @@ complemento_linha:
     {
         Entry * en = get_procedure(atrib_aux);
         
-        if (!en)
-            trigger_error("unknown procedure");
+        if (!en) {
+            en = get_forwarded_subr(atrib_aux);
+            if (!en)
+                trigger_error("unknown procedure");
+        }
 
         Subrotina * proc = (Subrotina *) en->element;
 
@@ -857,10 +876,14 @@ chamada_func:
     {        
         Entry * en = get_function(ident_aux);
         
-        if (!en)
-            trigger_error("unknown function");
+        if (!en) {
+            en = get_forwarded_subr(ident_aux);
+            if (!en)
+                trigger_error("unknown func");
+        }
 
         curr_subr = (Subrotina *) en->element;
+
         push(&SUBR_Stack, curr_subr);
 
         int * par = malloc(sizeof(int));
