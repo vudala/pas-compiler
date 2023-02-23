@@ -15,6 +15,7 @@ Stack * DMEM_Stack = NULL;
 Stack * SUBR_Stack = NULL;
 Stack * PARAM_Stack = NULL;
 Stack * FORW_Stack = NULL;
+Stack * IDENT_Stack = NULL;
 
 char * curr_subr_ident = NULL;
 Subrotina * curr_subr = NULL;
@@ -138,7 +139,10 @@ declara_proced:
     PROCEDURE IDENT
     {
         push_symbol(cate_subr);
-        strcpy(subr_aux, Token);
+        char * straux = malloc(strlen(Token));
+        must_alloc(straux, "declara proc");
+        strcpy(straux, Token);
+        push(&IDENT_Stack, straux);
         nivel_lexico += 1;
     }
     param_formais PONTO_E_VIRGULA
@@ -150,7 +154,10 @@ declara_func:
     FUNCTION IDENT
     {   //crlb
         push_symbol(cate_subr);
-        strcpy(subr_aux, Token);
+        char * straux = malloc(strlen(Token));
+        must_alloc(straux, "declara func");
+        strcpy(straux, Token);
+        push(&IDENT_Stack, straux);
         nivel_lexico += 1;
 
         // salva o nome do procedimento que está sendo declarado para checar atribuicao de retorno
@@ -188,25 +195,30 @@ complemento_declara_subr:
         sprintf(str_aux, "DSVS R%.2d", create_label());
         generate_code(-1, str_aux);
 
-        Entry * en = get_forwarded_subr(subr_aux);
+        char * straux = top(IDENT_Stack)->v;
+
+        Entry * en = get_forwarded_subr(straux);
         Subrotina * subr = NULL;
         if (en) {   	
             subr = en->element;
         }
         else {
-            en = get_subroutine(subr_aux);
+            en = get_subroutine(straux);
             subr = (Subrotina *) en->element;
         }
 
-        sprintf(str_aux, "ENPR %d", nivel_lexico + 1);
+        sprintf(str_aux, "ENPR %d", nivel_lexico);
 
         generate_code(subr->n_rotulo, str_aux);
     }
     bloco
     {
-        Entry * en = get_subroutine(subr_aux);
+        char * straux = pop(&IDENT_Stack);
+        Entry * en = get_subroutine(straux);
         Subrotina * subr = (Subrotina *) en->element;
         subr->init = 1;
+
+        free(straux);
 
         rtpr_subroutine(subr);
 

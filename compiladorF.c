@@ -531,6 +531,7 @@ void rtpr_subroutine(Subrotina * subr)
 Entry * get_forwarded_subr(char * ident)
 {
     Stack * el = FORW_Stack;
+    if (!el) return NULL;
     Entry * en = (Entry*) el->v;
 
     while (el && en) {
@@ -543,10 +544,4 @@ Entry * get_forwarded_subr(char * ident)
     }
 
     return NULL;
-}
-
-
-int compare_params(ParametroFormal * p1, ParametroFormal * p2)
-{
-    return 1;
 }
